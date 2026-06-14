@@ -35,7 +35,7 @@ export default function ReaderPage() {
     setLoading(true)
     setError(null)
 
-    api.pages.list(chapterId)
+    api.pages.list(storyId!, chapterId)
       .then((data) => {
         const sorted = data.pages.sort((a, b) => a.pageNumber - b.pageNumber)
         const ids = sorted.map((p) => p.fileId)

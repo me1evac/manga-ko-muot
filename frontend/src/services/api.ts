@@ -122,9 +122,9 @@ export const api = {
   },
 
   pages: {
-    list: (chapterId: string) =>
+    list: (storyId: string, chapterId: string) =>
       request<{ pages: PageRecord[]; chapterId: string }>(
-        `/pages/list/${chapterId}`
+        `/pages/list/${storyId}/${chapterId}`
       ),
   },
 

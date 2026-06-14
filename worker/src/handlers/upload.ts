@@ -74,7 +74,7 @@ app.post('/', async (c) => {
   if (!chapter) return c.json({ error: 'chapter not found' }, 404)
 
   const pageRecords: PageRecord[] = []
-  const existingPages = await getJson<number[]>(kv, KEYS.pageList(chapterId)) ?? []
+  const existingPages = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
   let pageNum = existingPages.length > 0 ? Math.max(...existingPages) + 1 : 1
 
   for (let i = 0; i < files.length; i++) {
@@ -97,13 +97,13 @@ app.post('/', async (c) => {
       fileSize: file.size,
     }
 
-    await putJson(kv, KEYS.page(chapterId, pageNum), page)
+    await putJson(kv, KEYS.page(storyId, chapterId, pageNum), page)
     pageRecords.push(page)
     existingPages.push(pageNum)
     pageNum++
   }
 
-  await putJson(kv, KEYS.pageList(chapterId), existingPages)
+  await putJson(kv, KEYS.pageList(storyId, chapterId), existingPages)
 
   chapter.pageCount = existingPages.length
   await putJson(kv, KEYS.chapter(storyId, chapterId), chapter)

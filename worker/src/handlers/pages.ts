@@ -5,15 +5,15 @@ import { getFileInfo, getFileUrl } from '../services/telegram'
 
 const app = new Hono<{ Bindings: Env }>()
 
-app.get('/list/:chapterId', async (c) => {
+app.get('/list/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
-  const { chapterId } = c.req.param()
+  const { storyId, chapterId } = c.req.param()
 
-  const pageNums = await getJson<number[]>(kv, KEYS.pageList(chapterId)) ?? []
+  const pageNums = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
   const pages: PageRecord[] = []
 
   for (const num of pageNums.sort((a, b) => a - b)) {
-    const page = await getJson<PageRecord>(kv, KEYS.page(chapterId, num))
+    const page = await getJson<PageRecord>(kv, KEYS.page(storyId, chapterId, num))
     if (page) pages.push(page)
   }
 

@@ -10,7 +10,7 @@ app.get('/:storyId/:chapterId', async (c) => {
   const chapter = await getJson<Chapter>(kv, KEYS.chapter(storyId, chapterId))
   if (!chapter) return c.json({ error: 'not found' }, 404)
 
-  const pageNums = await getJson<number[]>(kv, KEYS.pageList(chapterId)) ?? []
+  const pageNums = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
   return c.json({ chapter, pageCount: pageNums.length })
 })
 
