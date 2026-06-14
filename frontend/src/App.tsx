@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Layout/Header'
 import BottomNav from './components/Layout/BottomNav'
 import HomePage from './pages/HomePage'
@@ -7,9 +7,12 @@ import ReaderPage from './pages/ReaderPage'
 import ArchitecturePage from './pages/ArchitecturePage'
 
 export default function App() {
+  const loc = useLocation()
+  const isReader = loc.pathname.startsWith('/reader/')
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {!isReader && <Header />}
       <main className="flex-1 pb-20 md:pb-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -18,7 +21,7 @@ export default function App() {
           <Route path="/architecture" element={<ArchitecturePage />} />
         </Routes>
       </main>
-      <BottomNav />
+      {!isReader && <BottomNav />}
     </div>
   )
 }

@@ -1,21 +1,28 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import LazyImage from '../Common/LazyImage'
 
 interface LeftRightReaderProps {
   fileIds: string[]
+  storyId: string
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
+  onToggleMode: () => void
 }
 
 export default function LeftRightReader({
   fileIds,
+  storyId,
   currentPage,
   totalPages,
   onPageChange,
+  onToggleMode,
 }: LeftRightReaderProps) {
   const touchStartX = useRef(0)
+  const [showUI, setShowUI] = useState(true)
+  const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const goNext = useCallback(() => {
     if (currentPage < fileIds.length) {
@@ -38,6 +45,12 @@ export default function LeftRightReader({
     return () => window.removeEventListener('keydown', handleKey)
   }, [goNext, goPrev])
 
+  const showTemporarily = () => {
+    setShowUI(true)
+    clearTimeout(uiTimer.current ?? undefined)
+    uiTimer.current = setTimeout(() => setShowUI(false), 2500)
+  }
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -47,6 +60,8 @@ export default function LeftRightReader({
     if (Math.abs(diff) > 50) {
       if (diff > 0) goNext()
       else goPrev()
+    } else {
+      showTemporarily()
     }
   }
 
@@ -56,10 +71,29 @@ export default function LeftRightReader({
 
   return (
     <div
-      className="fixed inset-0 top-24 md:top-10 z-30 bg-black"
+      className="fixed inset-0 z-30 bg-black"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={showTemporarily}
     >
+      <div
+        className={`absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/70 to-transparent px-4 h-12 flex items-center justify-between transition-opacity duration-300 ${
+          showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <Link to={`/story/${storyId}`} className="text-sm text-zinc-300 hover:text-white transition-colors">
+          ← Back
+        </Link>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-400">
+            {currentPage} / {totalPages}
+          </span>
+          <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300">
+            Scroll Mode
+          </button>
+        </div>
+      </div>
+
       <div className="h-full flex items-center justify-center">
         <LazyImage
           key={currentPage}
@@ -70,9 +104,9 @@ export default function LeftRightReader({
       </div>
 
       <div className="absolute inset-0 flex">
-        <div className="w-1/3 h-full cursor-pointer" onClick={goPrev} />
+        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goPrev() }} />
         <div className="w-1/3 h-full" />
-        <div className="w-1/3 h-full cursor-pointer" onClick={goNext} />
+        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goNext() }} />
       </div>
     </div>
   )

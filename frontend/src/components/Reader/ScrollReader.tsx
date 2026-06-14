@@ -1,4 +1,5 @@
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import LazyImage from '../Common/LazyImage'
 
@@ -7,13 +8,13 @@ interface ScrollReaderProps {
   storyId: string
   chapterId: string
   currentPage: number
+  totalPages: number
   onPageChange: (page: number) => void
+  onToggleMode: () => void
 }
 
-export default function ScrollReader({ fileIds, storyId, chapterId, currentPage, onPageChange }: ScrollReaderProps) {
+export default function ScrollReader({ fileIds, storyId, chapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
-  const loadedRef = useRef(new Set<string>())
-  const [visiblePage, setVisiblePage] = [currentPage, onPageChange]
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -21,9 +22,7 @@ export default function ScrollReader({ fileIds, storyId, chapterId, currentPage,
         for (const entry of entries) {
           if (entry.isIntersecting) {
             const idx = pageRefs.current.findIndex((ref) => ref === entry.target)
-            if (idx !== -1) {
-              setVisiblePage(idx + 1)
-            }
+            if (idx !== -1) onPageChange(idx + 1)
           }
         }
       },
@@ -33,37 +32,39 @@ export default function ScrollReader({ fileIds, storyId, chapterId, currentPage,
     const refs = pageRefs.current.filter(Boolean)
     refs.forEach((ref) => obs.observe(ref!))
 
-    return () => {
-      refs.forEach((ref) => obs.unobserve(ref!))
-    }
-  }, [fileIds, setVisiblePage])
+    return () => refs.forEach((ref) => obs.unobserve(ref!))
+  }, [fileIds, onPageChange])
 
   useEffect(() => {
     const el = pageRefs.current[currentPage - 1]
-    if (el) {
-      el.scrollIntoView({ behavior: 'instant', block: 'start' })
-    }
-  }, []) // only on mount
+    if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' })
+  }, [])
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {fileIds.map((fileId, i) => (
-        <div
-          key={fileId}
-          ref={(el) => { pageRefs.current[i] = el }}
-          className="w-full"
-        >
-          <LazyImage
-            src={api.imageUrl(fileId)}
-            alt={`Page ${i + 1}`}
-            className="w-full min-h-[50vh]"
-            onLoad={() => loadedRef.current.add(fileId)}
-          />
-          <div className="text-center text-xs text-zinc-600 py-1">
-            {i + 1} / {fileIds.length}
+    <div className="min-h-screen bg-zinc-950">
+      <div className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800 px-4 h-10 flex items-center justify-between">
+        <Link to={`/story/${storyId}`} className="text-sm text-zinc-400 hover:text-white transition-colors">
+          ← Back
+        </Link>
+        <button onClick={onToggleMode} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300">
+          Page Mode
+        </button>
+      </div>
+
+      <div className="max-w-3xl mx-auto">
+        {fileIds.map((fileId, i) => (
+          <div key={fileId} ref={(el) => { pageRefs.current[i] = el }} className="w-full">
+            <LazyImage
+              src={api.imageUrl(fileId)}
+              alt={`Page ${i + 1}`}
+              className="w-full min-h-[50vh]"
+            />
+            <div className="text-center text-xs text-zinc-600 py-1">
+              {i + 1} / {fileIds.length}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
