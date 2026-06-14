@@ -35,7 +35,15 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
   const [overallProgress, setOverallProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [noSubfolders, setNoSubfolders] = useState(false)
   const existingRef = useRef<Map<number, Chapter>>(new Map())
+
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.setAttribute('webkitdirectory', '')
+    el.setAttribute('directory', '')
+  }, [])
 
   useEffect(() => {
     if (!storyId) return
@@ -70,7 +78,7 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
       files.sort((a, b) => collator.compare(a.name, b.name))
       const limited = files.slice(0, MAX_FILES)
       const num = folder === '__root__' ? idx + 1 : extractChapterNumber(folder) ?? idx + 1
-      const title = folder === '__root__' ? `Chapter ${num}` : `Chapter ${num}`
+      const title = `Chapter ${num}`
 
       result.push({
         folderName: folder,
@@ -87,6 +95,9 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
 
       idx++
     }
+
+    const allRoot = result.every(g => g.folderName === '__root__')
+    setNoSubfolders(allRoot && result.length === 1 && folderMap.size === 1)
 
     result.sort((a, b) => a.number - b.number)
     setGroups(result)
@@ -152,20 +163,34 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
 
       <div
         onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors border-zinc-700 hover:border-zinc-500"
+        className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors border-zinc-700 hover:border-zinc-500"
       >
         <input
           ref={inputRef}
           type="file"
-          // @ts-ignore
-          webkitdirectory=""
-          directory=""
           multiple
           style={{ display: 'none' }}
           onChange={handleFolderPick}
         />
-        <p className="text-zinc-400 text-sm">Click to select a folder</p>
+        <p className="text-zinc-400 text-sm">Select the <span className="text-purple-400 font-medium">parent folder</span> containing chapter subfolders</p>
+        <div className="mt-3 text-left inline-block text-xs text-zinc-600 leading-relaxed">
+          <p className="text-zinc-500 mb-1">Expected structure:</p>
+          <p className="text-zinc-600">parent-folder/<br/>
+          &nbsp;&nbsp;├── Chapter 1/<br/>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 001.jpg<br/>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 002.jpg<br/>
+          &nbsp;&nbsp;├── Chapter 2/<br/>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 001.jpg<br/>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 002.jpg<br/>
+          &nbsp;&nbsp;└── ...</p>
+        </div>
       </div>
+
+      {noSubfolders && (
+        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-3 text-yellow-300 text-xs">
+          No chapter subfolders detected. The selected folder should contain subfolders like "Chapter 1", "Chapter 2", etc. Select the <strong>parent</strong> folder, not a chapter folder.
+        </div>
+      )}
 
       {groups.length > 0 && (
         <>
