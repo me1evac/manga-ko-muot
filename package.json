@@ -1,0 +1,5 @@
+{
+  "name": "manga-khong-muot",
+  "private": true,
+  "workspaces": ["frontend", "worker"]
+}

@@ -1,0 +1,106 @@
+import { useParams, Link } from 'react-router-dom'
+import { useStory } from '../hooks/useManga'
+import { api } from '../services/api'
+import { formatDate } from '../utils/image'
+import Skeleton from '../components/Common/Skeleton'
+
+export default function StoryPage() {
+  const { id } = useParams<{ id: string }>()
+  const { data, loading, error } = useStory(id)
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-6 w-1/2" />
+        <Skeleton className="h-4 w-3/4" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <p className="text-zinc-500">{error ?? 'Story not found'}</p>
+        <Link to="/" className="text-purple-400 text-sm mt-2 inline-block">
+          Back to home
+        </Link>
+      </div>
+    )
+  }
+
+  const { story, chapters } = data
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="flex gap-6 mb-8">
+        <div className="w-32 h-44 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
+          {story.coverFileId ? (
+            <img
+              src={api.imageUrl(story.coverFileId)}
+              alt={story.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-3xl">
+              ◈
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold text-white">{story.title}</h1>
+          <p className="text-sm text-zinc-400 mt-1">ID: {story.id}</p>
+          <span className={`inline-block text-xs px-2 py-0.5 rounded mt-2 ${
+            story.status === 'ongoing' ? 'bg-green-900/50 text-green-400' :
+            story.status === 'completed' ? 'bg-blue-900/50 text-blue-400' :
+            'bg-yellow-900/50 text-yellow-400'
+          }`}>
+            {story.status}
+          </span>
+          {story.description && (
+            <p className="text-sm text-zinc-400 mt-3 line-clamp-3">
+              {story.description}
+            </p>
+          )}
+          <p className="text-xs text-zinc-600 mt-2">
+            Updated {formatDate(story.updatedAt)}
+          </p>
+        </div>
+      </div>
+
+      <h2 className="text-lg font-semibold mb-4">
+        Chapters ({chapters.length})
+      </h2>
+
+      {chapters.length === 0 ? (
+        <p className="text-zinc-600 text-sm">No chapters yet</p>
+      ) : (
+        <div className="space-y-2">
+          {chapters.map((ch) => (
+            <Link
+              key={ch.id}
+              to={`/reader/${story.id}/${ch.id}`}
+              className="block bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-900 hover:border-zinc-600 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">{ch.title}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {ch.pageCount} pages · Ch. {ch.number}
+                  </p>
+                </div>
+                <span className="text-zinc-600 text-lg">→</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
