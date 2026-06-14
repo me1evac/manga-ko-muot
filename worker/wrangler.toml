@@ -1,0 +1,9 @@
+name = "manga-khong-muot"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+kv_namespaces = [
+  { binding = "MANGA_KV", id = "1851457f14c044b49dd8999b52c668b9" }
+]
+
+# Secrets set via `wrangler secret put`
