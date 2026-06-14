@@ -1,9 +1,10 @@
 import { useParams, Link } from 'react-router-dom'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { api } from '../services/api'
 import { useReader } from '../hooks/useReader'
 import { usePrefetch } from '../hooks/usePrefetch'
-import Reader from '../components/Reader/Reader'
+import ScrollReader from '../components/Reader/ScrollReader'
+import LeftRightReader from '../components/Reader/LeftRightReader'
 import Skeleton from '../components/Common/Skeleton'
 
 export default function ReaderPage() {
@@ -12,6 +13,7 @@ export default function ReaderPage() {
   const [pageFileIds, setPageFileIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!storyId || !chapterId) return
@@ -29,6 +31,10 @@ export default function ReaderPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [storyId, chapterId, setCurrentPage, setTotalPages])
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [setCurrentPage])
 
   const prefetchUrls = useMemo(() => {
     return pageFileIds.slice(currentPage - 1, currentPage - 1 + (mode === 'scroll' ? 4 : 3))
@@ -68,31 +74,48 @@ export default function ReaderPage() {
   }
 
   return (
-    <div className={mode === 'left-right' ? '' : 'min-h-screen'}>
-      <div className="fixed top-14 left-0 right-0 z-30 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800 px-4 h-10 flex items-center justify-between md:top-0">
+    <div className="min-h-screen">
+      <div className="fixed top-14 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800 px-4 h-10 flex items-center justify-between md:top-0">
         <Link
           to={`/story/${storyId}`}
           className="text-sm text-zinc-400 hover:text-white transition-colors"
         >
           ← Back
         </Link>
-        <button
-          onClick={toggleMode}
-          className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300"
-        >
-          {mode === 'scroll' ? 'Page Mode' : 'Scroll Mode'}
-        </button>
+        <div className="flex items-center gap-3">
+          {mode === 'left-right' && (
+            <span className="text-xs text-zinc-500">
+              {currentPage} / {totalPages}
+            </span>
+          )}
+          <button
+            onClick={toggleMode}
+            className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300"
+          >
+            {mode === 'scroll' ? 'Page Mode' : 'Scroll Mode'}
+          </button>
+        </div>
       </div>
 
-      <div className={mode === 'left-right' ? '' : 'pt-24 md:pt-14'}>
-        <Reader
-          mode={mode}
-          fileIds={pageFileIds}
-          storyId={storyId!}
-          chapterId={chapterId!}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+      <div ref={scrollRef}>
+        <div key={`scroll-${mode}`} className={mode === 'left-right' ? 'hidden' : 'pt-24 md:pt-14'}>
+          <ScrollReader
+            fileIds={pageFileIds}
+            storyId={storyId!}
+            chapterId={chapterId!}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+          />
+        </div>
+
+        <div key={`lr-${mode}`} className={mode === 'scroll' ? 'hidden' : ''}>
+          <LeftRightReader
+            fileIds={pageFileIds}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
       </div>
     </div>
   )

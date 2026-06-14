@@ -63,6 +63,17 @@ export const api = {
   },
 
   upload: {
+    cover: async (file: File): Promise<{ fileId: string }> => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${BASE}/upload/cover`, { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'upload failed' }))
+        throw new Error(err.error)
+      }
+      return res.json()
+    },
+
     pages: async (
       storyId: string,
       chapterId: string,

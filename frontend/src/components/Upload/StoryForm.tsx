@@ -11,30 +11,52 @@ export default function StoryForm({ onSuccess }: StoryFormProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<'ongoing' | 'completed' | 'hiatus'>('ongoing')
-  const [loading, setLoading] = useState(false)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+
+  const handleCover = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setToast('Only JPG, PNG, WebP allowed')
+      return
+    }
+    setCoverFile(file)
+    setCoverPreview(URL.createObjectURL(file))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id.trim() || !title.trim()) return
 
-    setLoading(true)
+    setUploading(true)
     try {
+      let coverFileId = ''
+      if (coverFile) {
+        const result = await api.upload.cover(coverFile)
+        coverFileId = result.fileId
+      }
+
       await api.stories.create({
         id: id.trim(),
         title: title.trim(),
+        coverFileId,
         description: description.trim(),
         status,
       })
       setId('')
       setTitle('')
       setDescription('')
+      setCoverFile(null)
+      setCoverPreview(null)
       setToast('Story created')
       onSuccess()
     } catch (err: any) {
       setToast(err.message)
     } finally {
-      setLoading(false)
+      setUploading(false)
     }
   }
 
@@ -65,6 +87,31 @@ export default function StoryForm({ onSuccess }: StoryFormProps) {
       </div>
 
       <div>
+        <label className="block text-sm text-zinc-400 mb-1">Cover Image</label>
+        <div className="flex items-center gap-4">
+          <label className="cursor-pointer">
+            <div className="w-24 h-32 rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900 flex items-center justify-center hover:border-zinc-500 transition-colors">
+              {coverPreview ? (
+                <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl text-zinc-600">+</span>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleCover}
+              className="hidden"
+            />
+          </label>
+          <div className="text-xs text-zinc-500">
+            <p>JPG, PNG, WebP</p>
+            <p className="mt-1">Recommended: 3:4 ratio</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
         <label className="block text-sm text-zinc-400 mb-1">Description</label>
         <textarea
           value={description}
@@ -87,8 +134,8 @@ export default function StoryForm({ onSuccess }: StoryFormProps) {
         </select>
       </div>
 
-      <button type="submit" disabled={loading} className="btn-primary w-full">
-        {loading ? 'Creating...' : 'Create Story'}
+      <button type="submit" disabled={uploading} className="btn-primary w-full">
+        {uploading ? 'Creating...' : 'Create Story'}
       </button>
     </form>
   )

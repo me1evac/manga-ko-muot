@@ -15,6 +15,29 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
 
 const app = new Hono<{ Bindings: Env }>()
 
+app.post('/cover', async (c) => {
+  const botToken = c.env.TELEGRAM_BOT_TOKEN
+  const chatId = c.env.TELEGRAM_CHAT_ID
+
+  if (!chatId) {
+    return c.json({ error: 'TELEGRAM_CHAT_ID not configured' }, 500)
+  }
+
+  const body: any = await c.req.parseBody({ all: true })
+  const file = body['file']
+
+  if (!file || !(file instanceof File)) {
+    return c.json({ error: 'file required' }, 400)
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return c.json({ error: `unsupported format: ${file.type}` }, 400)
+  }
+
+  const fileId = await sendPhoto(botToken, chatId, file)
+  return c.json({ fileId }, 201)
+})
+
 app.post('/', async (c) => {
   const kv = c.env.MANGA_KV
   const botToken = c.env.TELEGRAM_BOT_TOKEN
