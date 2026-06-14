@@ -3,9 +3,10 @@ import { useStories } from '../hooks/useManga'
 import PasswordGate from '../components/Upload/PasswordGate'
 import StoryForm from '../components/Upload/StoryForm'
 import ChapterForm from '../components/Upload/ChapterForm'
+import StoryManager from '../components/Upload/StoryManager'
 import Toast from '../components/Common/Toast'
 
-type Tab = 'story' | 'chapter' | 'settings'
+type Tab = 'manage' | 'chapter' | 'story' | 'settings'
 
 export default function ArchitecturePage() {
   const [unlocked, setUnlocked] = useState(
@@ -41,6 +42,7 @@ export default function ArchitecturePage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: 'manage', label: 'Manage' },
     { key: 'chapter', label: 'Add Chapter' },
     { key: 'story', label: 'New Story' },
     { key: 'settings', label: 'Settings' },
@@ -73,6 +75,10 @@ export default function ArchitecturePage() {
           </button>
         ))}
       </div>
+
+      {tab === 'manage' && (
+        <StoryManager onChanged={() => refetch()} />
+      )}
 
       {tab === 'story' && (
         <StoryForm onSuccess={() => { refetch(); setToast('Story created') }} />
