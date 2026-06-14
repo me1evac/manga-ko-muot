@@ -3,10 +3,11 @@ import { useStories } from '../hooks/useManga'
 import PasswordGate from '../components/Upload/PasswordGate'
 import StoryForm from '../components/Upload/StoryForm'
 import ChapterForm from '../components/Upload/ChapterForm'
+import BatchUpload from '../components/Upload/BatchUpload'
 import StoryManager from '../components/Upload/StoryManager'
 import Toast from '../components/Common/Toast'
 
-type Tab = 'manage' | 'chapter' | 'story' | 'settings'
+type Tab = 'manage' | 'chapter' | 'batch' | 'story' | 'settings'
 
 export default function ArchitecturePage() {
   const [unlocked, setUnlocked] = useState(
@@ -44,6 +45,7 @@ export default function ArchitecturePage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'manage', label: 'Manage' },
     { key: 'chapter', label: 'Add Chapter' },
+    { key: 'batch', label: 'Batch Upload' },
     { key: 'story', label: 'New Story' },
     { key: 'settings', label: 'Settings' },
   ]
@@ -86,6 +88,10 @@ export default function ArchitecturePage() {
 
       {tab === 'chapter' && (
         <ChapterForm stories={stories} onSuccess={() => refetch()} />
+      )}
+
+      {tab === 'batch' && (
+        <BatchUpload stories={stories} onSuccess={() => refetch()} />
       )}
 
       {tab === 'settings' && (
