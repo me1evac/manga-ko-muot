@@ -38,6 +38,10 @@ export default function StoryPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      <Link to="/" className="text-sm text-zinc-400 hover:text-white transition-colors inline-block mb-4">
+        ← Back to home
+      </Link>
+
       <div className="flex gap-6 mb-8">
         <div className="w-32 h-44 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
           {story.coverFileId ? (

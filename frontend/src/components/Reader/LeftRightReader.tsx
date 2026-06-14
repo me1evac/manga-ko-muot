@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import LazyImage from '../Common/LazyImage'
 
 interface LeftRightReaderProps {
   fileIds: string[]
   storyId: string
+  chapterNumber?: number
+  prevChapterId?: string | null
+  nextChapterId?: string | null
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
@@ -15,11 +18,15 @@ interface LeftRightReaderProps {
 export default function LeftRightReader({
   fileIds,
   storyId,
+  chapterNumber,
+  prevChapterId,
+  nextChapterId,
   currentPage,
   totalPages,
   onPageChange,
   onToggleMode,
 }: LeftRightReaderProps) {
+  const navigate = useNavigate()
   const touchStartX = useRef(0)
   const [showUI, setShowUI] = useState(true)
   const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -27,14 +34,18 @@ export default function LeftRightReader({
   const goNext = useCallback(() => {
     if (currentPage < fileIds.length) {
       onPageChange(currentPage + 1)
+    } else if (nextChapterId) {
+      navigate(`/reader/${storyId}/${nextChapterId}`)
     }
-  }, [currentPage, fileIds.length, onPageChange])
+  }, [currentPage, fileIds.length, onPageChange, nextChapterId, storyId, navigate])
 
   const goPrev = useCallback(() => {
     if (currentPage > 1) {
       onPageChange(currentPage - 1)
+    } else if (prevChapterId) {
+      navigate(`/reader/${storyId}/${prevChapterId}`)
     }
-  }, [currentPage, onPageChange])
+  }, [currentPage, onPageChange, prevChapterId, storyId, navigate])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -84,9 +95,9 @@ export default function LeftRightReader({
         <Link to={`/story/${storyId}`} className="text-sm text-zinc-300 hover:text-white transition-colors">
           ← Back
         </Link>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400">
-            {currentPage} / {totalPages}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-500">
+            {currentPage}/{totalPages}
           </span>
           <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300">
             Scroll Mode
@@ -101,6 +112,24 @@ export default function LeftRightReader({
           alt={`Page ${currentPage}`}
           className="max-h-full max-w-full animate-in"
         />
+      </div>
+
+      <div
+        className={`absolute bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/70 to-transparent px-4 h-12 flex items-center justify-center gap-4 transition-opacity duration-300 ${
+          showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {prevChapterId ? (
+          <Link to={`/reader/${storyId}/${prevChapterId}`} className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1 rounded text-sm transition-colors">
+            &lt; Prev
+          </Link>
+        ) : <div className="w-16" />}
+        {chapterNumber && <span className="text-xs text-zinc-400">Ch.{chapterNumber}</span>}
+        {nextChapterId ? (
+          <Link to={`/reader/${storyId}/${nextChapterId}`} className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1 rounded text-sm transition-colors">
+            Next &gt;
+          </Link>
+        ) : <div className="w-16" />}
       </div>
 
       <div className="absolute inset-0 flex">

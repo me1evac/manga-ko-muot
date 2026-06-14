@@ -6,6 +6,7 @@ import { usePrefetch } from '../hooks/usePrefetch'
 import ScrollReader from '../components/Reader/ScrollReader'
 import LeftRightReader from '../components/Reader/LeftRightReader'
 import Skeleton from '../components/Common/Skeleton'
+import type { Chapter } from '../types'
 
 export default function ReaderPage() {
   const { storyId, chapterId } = useParams<{ storyId: string; chapterId: string }>()
@@ -13,6 +14,20 @@ export default function ReaderPage() {
   const [pageFileIds, setPageFileIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [chapters, setChapters] = useState<Chapter[]>([])
+
+  useEffect(() => {
+    if (!storyId) return
+    api.chapters.list(storyId).then(chs => {
+      chs.sort((a, b) => a.number - b.number)
+      setChapters(chs)
+    }).catch(() => {})
+  }, [storyId])
+
+  const chapterIdx = chapters.findIndex(c => c.id === chapterId)
+  const prevChapterId = chapterIdx > 0 ? chapters[chapterIdx - 1].id : null
+  const nextChapterId = chapterIdx < chapters.length - 1 ? chapters[chapterIdx + 1].id : null
+  const chapterNumber = chapters[chapterIdx]?.number
 
   useEffect(() => {
     if (!storyId || !chapterId) return
@@ -78,6 +93,9 @@ export default function ReaderPage() {
         fileIds={pageFileIds}
         storyId={storyId!}
         chapterId={chapterId!}
+        chapterNumber={chapterNumber}
+        prevChapterId={prevChapterId}
+        nextChapterId={nextChapterId}
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={handlePageChange}
@@ -90,6 +108,9 @@ export default function ReaderPage() {
     <LeftRightReader
       fileIds={pageFileIds}
       storyId={storyId!}
+      chapterNumber={chapterNumber}
+      prevChapterId={prevChapterId}
+      nextChapterId={nextChapterId}
       currentPage={currentPage}
       totalPages={totalPages}
       onPageChange={handlePageChange}

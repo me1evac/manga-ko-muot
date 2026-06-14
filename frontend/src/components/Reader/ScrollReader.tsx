@@ -7,13 +7,16 @@ interface ScrollReaderProps {
   fileIds: string[]
   storyId: string
   chapterId: string
+  chapterNumber?: number
+  prevChapterId?: string | null
+  nextChapterId?: string | null
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
   onToggleMode: () => void
 }
 
-export default function ScrollReader({ fileIds, storyId, chapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
+export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumber, prevChapterId, nextChapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
@@ -65,6 +68,24 @@ export default function ScrollReader({ fileIds, storyId, chapterId, currentPage,
           </div>
         ))}
       </div>
+
+      {(prevChapterId || nextChapterId) && (
+        <div className="max-w-3xl mx-auto px-4 py-8 flex items-center justify-center gap-4">
+          {prevChapterId ? (
+            <Link to={`/reader/${storyId}/${prevChapterId}`} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors">
+              &lt; Prev
+            </Link>
+          ) : <div className="w-16" />}
+          <Link to={`/story/${storyId}`} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+            Chapter List
+          </Link>
+          {nextChapterId ? (
+            <Link to={`/reader/${storyId}/${nextChapterId}`} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors">
+              Next &gt;
+            </Link>
+          ) : <div className="w-16" />}
+        </div>
+      )}
     </div>
   )
 }
