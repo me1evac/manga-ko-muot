@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useStory } from '../hooks/useManga'
 import { api } from '../services/api'
 import { formatDate } from '../utils/image'
+import { loadProgress } from '../hooks/useReadProgress'
 import Skeleton from '../components/Common/Skeleton'
 
 export default function StoryPage() {
@@ -35,6 +36,7 @@ export default function StoryPage() {
   }
 
   const { story, chapters } = data
+  const progress = loadProgress(story.id)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -75,6 +77,17 @@ export default function StoryPage() {
           <p className="text-xs text-zinc-600 mt-2">
             Updated {formatDate(story.updatedAt)}
           </p>
+          {progress && (
+            <Link
+              to={`/reader/${story.id}/${progress.chapterId}`}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              Continue to read at Chapter {progress.chapterNumber}
+              <span className="text-xs text-zinc-500">
+                (page {progress.pageNumber}/{progress.totalPages})
+              </span>
+            </Link>
+          )}
         </div>
       </div>
 

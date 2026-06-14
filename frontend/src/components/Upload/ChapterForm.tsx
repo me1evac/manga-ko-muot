@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
+import BatchUpload from './BatchUpload'
 import type { Story, Chapter } from '../../types'
 
 const MAX_FILES = 70
@@ -17,6 +18,7 @@ interface ChapterFormProps {
 }
 
 export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
+  const [mode, setMode] = useState<'manual' | 'folder'>('manual')
   const [storyId, setStoryId] = useState(stories[0]?.id ?? '')
   const [title, setTitle] = useState('')
   const [number, setNumber] = useState('1')
@@ -91,7 +93,28 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
     <div className="space-y-6">
       {toast && <Toast message={toast} type={toast.includes('rror') ? 'error' : 'success'} onClose={() => setToast(null)} />}
 
-      {!createdChapter ? (
+      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
+        <button
+          onClick={() => setMode('manual')}
+          className={`flex-1 py-2 text-sm rounded-md transition-colors ${
+            mode === 'manual' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Manual
+        </button>
+        <button
+          onClick={() => setMode('folder')}
+          className={`flex-1 py-2 text-sm rounded-md transition-colors ${
+            mode === 'folder' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Upload by folder
+        </button>
+      </div>
+
+      {mode === 'folder' ? (
+        <BatchUpload stories={stories} onSuccess={onSuccess} />
+      ) : !createdChapter ? (
         <div className="space-y-4">
           <div>
             <label className="block text-sm text-zinc-400 mb-1">Story</label>

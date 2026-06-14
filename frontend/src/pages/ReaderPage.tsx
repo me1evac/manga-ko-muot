@@ -6,6 +6,7 @@ import { usePrefetch } from '../hooks/usePrefetch'
 import ScrollReader from '../components/Reader/ScrollReader'
 import LeftRightReader from '../components/Reader/LeftRightReader'
 import Skeleton from '../components/Common/Skeleton'
+import { saveProgress } from '../hooks/useReadProgress'
 import type { Chapter } from '../types'
 
 export default function ReaderPage() {
@@ -49,6 +50,16 @@ export default function ReaderPage() {
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
   }, [setCurrentPage])
+
+  useEffect(() => {
+    if (!storyId || !chapterId || !chapterNumber || pageFileIds.length === 0) return
+    saveProgress(storyId, {
+      chapterId,
+      chapterNumber,
+      pageNumber: currentPage,
+      totalPages,
+    })
+  }, [storyId, chapterId, chapterNumber, currentPage, totalPages, pageFileIds.length])
 
   const prefetchUrls = useMemo(() => {
     return pageFileIds.slice(currentPage - 1, currentPage - 1 + (mode === 'scroll' ? 4 : 3))
