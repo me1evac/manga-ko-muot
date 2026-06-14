@@ -1,20 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
-import type { Story, Chapter } from '../../types'
+import type { Story } from '../../types'
 
 const MAX_FILES = 70
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
-interface ChapterGroup {
-  folderName: string
-  number: number
-  title: string
+interface QueueItem {
+  id: number
+  storyId: string
   files: File[]
+  chapterNumber: number
+  title: string
+  thumbnails: string[]
   status: 'pending' | 'exists' | 'creating' | 'uploading' | 'done' | 'error'
   error?: string
-  thumbnails: string[]
 }
+
+let nextId = 1
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
@@ -23,20 +26,32 @@ function extractChapterNumber(name: string): number | null {
   return m ? parseInt(m[1], 10) : null
 }
 
+function detectFolderName(files: File[]): string | null {
+  for (const file of files) {
+    const slash = file.webkitRelativePath.indexOf('/')
+    if (slash !== -1) return file.webkitRelativePath.slice(0, slash)
+  }
+  for (const file of files) {
+    const p = (file as any).path
+    if (typeof p === 'string') {
+      const parts = p.replace(/\\/g, '/').split('/')
+      if (parts.length >= 2) return parts[parts.length - 2]
+    }
+  }
+  return null
+}
+
 interface BatchUploadProps {
   stories: Story[]
   onSuccess: () => void
 }
 
 export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
-  const [storyId, setStoryId] = useState(stories[0]?.id ?? '')
-  const [groups, setGroups] = useState<ChapterGroup[]>([])
+  const [queue, setQueue] = useState<QueueItem[]>([])
   const [uploading, setUploading] = useState(false)
-  const [overallProgress, setOverallProgress] = useState(0)
+  const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [noSubfolders, setNoSubfolders] = useState(false)
-  const existingRef = useRef<Map<number, Chapter>>(new Map())
 
   useEffect(() => {
     const el = inputRef.current
@@ -45,121 +60,99 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
     el.setAttribute('directory', '')
   }, [])
 
-  useEffect(() => {
-    if (!storyId) return
-    setGroups([])
-    api.chapters.list(storyId).then(chapters => {
-      const map = new Map<number, Chapter>()
-      chapters.forEach(c => map.set(c.number, c))
-      existingRef.current = map
-    }).catch(() => {})
-  }, [storyId])
-
-  function handleFolderPick(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePickFolder(e: React.ChangeEvent<HTMLInputElement>) {
     const fileList = e.target.files
     if (!fileList || fileList.length === 0) return
 
-    const all = Array.from(fileList).filter(f => ALLOWED_TYPES.has(f.type))
-    const folderMap = new Map<string, File[]>()
-
-    for (const file of all) {
-      const path = file.webkitRelativePath
-      const slash = path.indexOf('/')
-      const folder = slash === -1 ? '__root__' : path.slice(0, slash)
-      if (!folderMap.has(folder)) folderMap.set(folder, [])
-      folderMap.get(folder)!.push(file)
+    const files = Array.from(fileList).filter(f => ALLOWED_TYPES.has(f.type))
+    if (files.length === 0) {
+      setToast('No supported images found in the folder')
+      return
     }
 
-    let idx = 0
-    const result: ChapterGroup[] = []
-    const existing = existingRef.current
+    files.sort((a, b) => collator.compare(a.name, b.name))
 
-    for (const [folder, files] of folderMap) {
-      files.sort((a, b) => collator.compare(a.name, b.name))
-      const limited = files.slice(0, MAX_FILES)
-      const num = folder === '__root__' ? idx + 1 : extractChapterNumber(folder) ?? idx + 1
-      const title = `Chapter ${num}`
+    const folderName = detectFolderName(files)
+    const extracted = folderName ? extractChapterNumber(folderName) : null
+    const chapterNumber = extracted ??
+      (queue.length > 0 ? Math.max(...queue.map(q => q.chapterNumber)) + 1 : 1)
 
-      result.push({
-        folderName: folder,
-        number: num,
-        title,
-        files: limited,
-        status: existing.has(num) ? 'exists' : 'pending',
-        thumbnails: limited.slice(0, 3).map(f => URL.createObjectURL(f)),
-      })
-
-      if (files.length > MAX_FILES && idx === 0) {
-        setToast(`Some chapters exceed ${MAX_FILES} files — extra pages truncated`)
-      }
-
-      idx++
+    const item: QueueItem = {
+      id: nextId++,
+      storyId: stories[0]?.id ?? '',
+      files,
+      chapterNumber,
+      title: `Chapter ${chapterNumber}`,
+      thumbnails: files.slice(0, 3).map(f => URL.createObjectURL(f)),
+      status: 'pending',
     }
 
-    const allRoot = result.every(g => g.folderName === '__root__')
-    setNoSubfolders(allRoot && result.length === 1 && folderMap.size === 1)
-
-    result.sort((a, b) => a.number - b.number)
-    setGroups(result)
+    setQueue(prev => [...prev, item])
     if (inputRef.current) inputRef.current.value = ''
   }
 
+  function removeItem(id: number) {
+    setQueue(prev => prev.filter(q => q.id !== id))
+  }
+
+  function updateStoryId(id: number, storyId: string) {
+    setQueue(prev => prev.map(q => q.id === id ? { ...q, storyId } : q))
+  }
+
   async function handleUploadAll() {
-    if (groups.every(g => g.status !== 'pending')) return
+    const pending = queue.filter(q => q.status === 'pending')
+    if (pending.length === 0) return
     setUploading(true)
 
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i]
-      if (g.status === 'exists') continue
+    const totalChunks = pending.reduce((sum, q) => sum + Math.ceil(q.files.length / MAX_FILES), 0)
+    let chunksDone = 0
 
-      setGroups(prev => prev.map((grp, idx) => idx === i ? { ...grp, status: 'creating' } : grp))
+    for (let i = 0; i < queue.length; i++) {
+      const q = queue[i]
+      if (q.status !== 'pending') continue
+
+      setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'creating' } : item))
 
       try {
         const chapter = await api.chapters.create({
-          storyId,
-          title: g.title,
-          number: g.number,
+          storyId: q.storyId,
+          title: q.title,
+          number: q.chapterNumber,
         })
 
-        setGroups(prev => prev.map((grp, idx) => idx === i ? { ...grp, status: 'uploading' } : grp))
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading' } : item))
 
-        await api.upload.pages(storyId, chapter.id, g.files)
+        for (let c = 0; c < q.files.length; c += MAX_FILES) {
+          const chunk = q.files.slice(c, c + MAX_FILES)
+          await api.upload.pages(q.storyId, chapter.id, chunk)
+          chunksDone++
+          setProgress(Math.round((chunksDone / totalChunks) * 100))
+        }
 
-        setGroups(prev => prev.map((grp, idx) => idx === i ? { ...grp, status: 'done' } : grp))
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'done' } : item))
       } catch (err: any) {
         if (/already exists|exists/i.test(err.message ?? '')) {
-          setGroups(prev => prev.map((grp, idx) => idx === i ? { ...grp, status: 'exists' } : grp))
+          setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'exists' } : item))
         } else {
-          setGroups(prev => prev.map((grp, idx) => idx === i ? { ...grp, status: 'error', error: err.message } : grp))
+          setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'error', error: err.message } : item))
         }
       }
-
-      setOverallProgress(Math.round(((i + 1) / groups.length) * 100))
     }
 
     setUploading(false)
-    setOverallProgress(100)
+    setProgress(100)
     onSuccess()
 
-    const done = groups.filter(g => g.status === 'done').length
-    const skipped = groups.filter(g => g.status === 'exists').length
+    const done = queue.filter(q => q.status === 'done').length
+    const skipped = queue.filter(q => q.status === 'exists').length
     setToast(`${done} chapter(s) uploaded, ${skipped} skipped (already exist)`)
   }
 
-  const pendingCount = groups.filter(g => g.status === 'pending').length
+  const pendingCount = queue.filter(q => q.status === 'pending').length
 
   return (
     <div className="space-y-6">
-      {toast && <Toast message={toast} type={toast.includes('truncated') || toast.includes('rror') ? 'error' : 'success'} onClose={() => setToast(null)} />}
-
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">Story</label>
-        <select value={storyId} onChange={e => setStoryId(e.target.value)} className="input-field">
-          {stories.map(s => (
-            <option key={s.id} value={s.id}>{s.id} — {s.title}</option>
-          ))}
-        </select>
-      </div>
+      {toast && <Toast message={toast} type={toast.includes('rror') ? 'error' : 'success'} onClose={() => setToast(null)} />}
 
       <div
         onClick={() => inputRef.current?.click()}
@@ -170,85 +163,78 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
           type="file"
           multiple
           style={{ display: 'none' }}
-          onChange={handleFolderPick}
+          onChange={handlePickFolder}
         />
-        <p className="text-zinc-400 text-sm">Select the <span className="text-purple-400 font-medium">parent folder</span> containing chapter subfolders</p>
-        <div className="mt-3 text-left inline-block text-xs text-zinc-600 leading-relaxed">
-          <p className="text-zinc-500 mb-1">Expected structure:</p>
-          <p className="text-zinc-600">parent-folder/<br/>
-          &nbsp;&nbsp;├── Chapter 1/<br/>
-          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 001.jpg<br/>
-          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 002.jpg<br/>
-          &nbsp;&nbsp;├── Chapter 2/<br/>
-          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 001.jpg<br/>
-          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 002.jpg<br/>
-          &nbsp;&nbsp;└── ...</p>
-        </div>
+        <p className="text-zinc-400 text-sm">Pick a chapter folder</p>
       </div>
 
-      {noSubfolders && (
-        <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-3 text-yellow-300 text-xs">
-          No chapter subfolders detected. The selected folder should contain subfolders like "Chapter 1", "Chapter 2", etc. Select the <strong>parent</strong> folder, not a chapter folder.
+      {queue.length > 0 && (
+        <div className="space-y-2">
+          {queue.map((q, i) => (
+            <div key={q.id} className="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
+              <div className="flex items-start gap-3">
+                <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                  q.status === 'done' ? 'bg-green-500' :
+                  q.status === 'exists' ? 'bg-yellow-500' :
+                  q.status === 'creating' || q.status === 'uploading' ? 'bg-purple-500 animate-pulse' :
+                  q.status === 'error' ? 'bg-red-500' :
+                  'bg-zinc-600'
+                }`} />
+
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <select
+                    value={q.storyId}
+                    onChange={e => updateStoryId(q.id, e.target.value)}
+                    className="input-field text-xs py-1"
+                    disabled={uploading}
+                  >
+                    {stories.map(s => (
+                      <option key={s.id} value={s.id}>{s.id} — {s.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-sm font-medium text-zinc-200">{q.title}</p>
+                  <p className="text-xs text-zinc-500">{q.files.length} page(s) · {q.status}</p>
+                  {q.error && <p className="text-xs text-red-400">{q.error}</p>}
+                </div>
+
+                <div className="flex items-start gap-2 shrink-0">
+                  {q.thumbnails.length > 0 && (
+                    <div className="w-10 h-12 rounded overflow-hidden bg-zinc-800">
+                      <img src={q.thumbnails[0]} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {!uploading && q.status === 'pending' && (
+                    <button
+                      onClick={() => removeItem(q.id)}
+                      className="text-zinc-600 hover:text-red-400 text-lg leading-none mt-0.5"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {groups.length > 0 && (
-        <>
-          <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-700">
-            <p className="text-sm font-medium text-zinc-300">
-              Detected {groups.length} chapter(s)
-            </p>
+      {uploading && (
+        <div className="space-y-2">
+          <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
+          <p className="text-xs text-zinc-500 text-center">Uploading... {progress}%</p>
+        </div>
+      )}
 
-          {groups[0].thumbnails.length > 0 && (
-            <div className="flex gap-2">
-              {groups[0].thumbnails.map((url, i) => (
-                <div key={i} className="w-20 h-24 rounded overflow-hidden bg-zinc-800">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {groups.map((g, i) => (
-              <div key={i} className="flex items-center justify-between bg-zinc-900/50 rounded-lg px-3 py-2 border border-zinc-800">
-                <div className="flex items-center gap-3">
-                  <span className={`w-2 h-2 rounded-full ${
-                    g.status === 'done' ? 'bg-green-500' :
-                    g.status === 'exists' ? 'bg-yellow-500' :
-                    g.status === 'creating' || g.status === 'uploading' ? 'bg-purple-500 animate-pulse' :
-                    g.status === 'error' ? 'bg-red-500' :
-                    'bg-zinc-600'
-                  }`} />
-                  <div>
-                    <p className="text-sm font-medium">{g.title}</p>
-                    <p className="text-xs text-zinc-500">{g.files.length} page(s)</p>
-                    {g.error && <p className="text-xs text-red-400 mt-0.5">{g.error}</p>}
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-500 capitalize">{g.status}</span>
-              </div>
-            ))}
-          </div>
-
-          {uploading && (
-            <div className="space-y-2">
-              <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${overallProgress}%` }} />
-              </div>
-              <p className="text-xs text-zinc-500 text-center">Overall: {overallProgress}%</p>
-            </div>
-          )}
-
-          <button
-            onClick={handleUploadAll}
-            disabled={uploading || pendingCount === 0}
-            className="btn-primary w-full"
-          >
-            {uploading ? 'Uploading...' : `Upload ${pendingCount} chapter(s)`}
-          </button>
-        </>
+      {queue.length > 0 && (
+        <button
+          onClick={handleUploadAll}
+          disabled={uploading || pendingCount === 0}
+          className="btn-primary w-full"
+        >
+          {uploading ? 'Uploading...' : `Upload ${pendingCount} chapter(s)`}
+        </button>
       )}
     </div>
   )
