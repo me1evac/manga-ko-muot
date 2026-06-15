@@ -18,16 +18,27 @@ interface ScrollReaderProps {
 
 export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumber, prevChapterId, nextChapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
+  const hasRestored = useRef(false)
+
+  useEffect(() => {
+    hasRestored.current = false
+  }, [fileIds])
 
   useEffect(() => {
     const obs = new IntersectionObserver(
       (entries) => {
+        let bestIdx = -1
+        let bestRatio = 0
         for (const entry of entries) {
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
             const idx = pageRefs.current.findIndex((ref) => ref === entry.target)
-            if (idx !== -1) onPageChange(idx + 1)
+            if (idx !== -1) {
+              bestIdx = idx
+              bestRatio = entry.intersectionRatio
+            }
           }
         }
+        if (bestIdx !== -1) onPageChange(bestIdx + 1)
       },
       { threshold: 0.3, rootMargin: '-80px 0px 0px 0px' }
     )
@@ -35,13 +46,16 @@ export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumbe
     const refs = pageRefs.current.filter(Boolean)
     refs.forEach((ref) => obs.observe(ref!))
 
+    if (!hasRestored.current) {
+      const el = pageRefs.current[currentPage - 1]
+      if (el) {
+        el.scrollIntoView({ behavior: 'instant', block: 'start' })
+        hasRestored.current = true
+      }
+    }
+
     return () => refs.forEach((ref) => obs.unobserve(ref!))
   }, [fileIds, onPageChange])
-
-  useEffect(() => {
-    const el = pageRefs.current[currentPage - 1]
-    if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' })
-  }, [currentPage])
 
   return (
     <div className="min-h-screen bg-zinc-950">
