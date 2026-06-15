@@ -10,7 +10,7 @@ export default function HomePage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">Stories</h1>
         <button
-          onClick={refetch}
+          onClick={() => refetch(true)}
           className="btn-ghost text-sm"
         >
           Refresh

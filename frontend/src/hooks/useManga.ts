@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { api } from '../services/api'
+import { api, clearCache } from '../services/api'
 import type { Story, Chapter, StoryWithChapters } from '../types'
 
 export function useStories() {
@@ -7,8 +7,9 @@ export function useStories() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetch = useCallback(async () => {
+  const fetch = useCallback(async (force = false) => {
     try {
+      if (force) clearCache('/stories')
       setLoading(true)
       const data = await api.stories.list()
       setStories(data)

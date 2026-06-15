@@ -36,6 +36,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data
 }
 
+function clearCache(pattern?: string) {
+  if (pattern) {
+    for (const key of cache.keys()) {
+      if (key.includes(pattern)) cache.delete(key)
+    }
+  } else {
+    cache.clear()
+  }
+}
+
+export { clearCache }
+
 export const api = {
   stories: {
     list: () => request<Story[]>('/stories'),
