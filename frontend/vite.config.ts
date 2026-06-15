@@ -10,5 +10,12 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'inline',
+    },
+  },
+  build: {
+    sourcemap: false,
   },
 })
