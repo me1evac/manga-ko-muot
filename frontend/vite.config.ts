@@ -48,7 +48,7 @@ function hideTsExtension(): Plugin {
       })
     },
     resolveId(id, importer) {
-      if (id.includes('node_modules')) return
+      if (id.includes('node_modules') || importer?.includes('node_modules')) return
       if (id.includes('/.')) return
       if (id.endsWith('.jsx')) {
         return this.resolve(id.slice(0, -4) + '.tsx', importer, { skipSelf: true })
