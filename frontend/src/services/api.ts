@@ -2,7 +2,20 @@ import type { Story, Chapter, StoryWithChapters, PageRecord } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
+const cache = new Map<string, { data: unknown; timestamp: number }>()
+const CACHE_TTL = 60_000
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isGet = !init || init.method === undefined || init.method === 'GET'
+  const cacheKey = `GET:${path}`
+
+  if (isGet) {
+    const cached = cache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data as T
+    }
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -14,7 +27,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error ?? 'request failed')
   }
-  return res.json()
+  const data = await res.json()
+
+  if (isGet) {
+    cache.set(cacheKey, { data, timestamp: Date.now() })
+  }
+
+  return data
 }
 
 export const api = {

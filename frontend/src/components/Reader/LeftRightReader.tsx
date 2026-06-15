@@ -107,7 +107,6 @@ export default function LeftRightReader({
 
       <div className="h-full flex items-center justify-center">
         <LazyImage
-          key={currentPage}
           src={api.imageUrl(fileId)}
           alt={`Page ${currentPage}`}
           className="max-h-full max-w-full animate-in"

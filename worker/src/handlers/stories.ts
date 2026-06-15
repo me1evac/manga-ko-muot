@@ -8,13 +8,14 @@ const app = new Hono<{ Bindings: Env }>()
 app.get('/', async (c) => {
   const kv = c.env.MANGA_KV
   const storyKeys = await kv.list({ prefix: 'story:' })
-  const stories: Story[] = []
-  for (const key of storyKeys.keys) {
-    const id = key.name.replace('story:', '')
-    if (!id || id === 'list') continue
-    const s = await getJson<Story>(kv, KEYS.story(id))
-    if (s) stories.push(s)
-  }
+  const storyResults = await Promise.all(
+    storyKeys.keys.map(async key => {
+      const id = key.name.replace('story:', '')
+      if (!id || id === 'list') return null
+      return getJson<Story>(kv, KEYS.story(id))
+    })
+  )
+  const stories = storyResults.filter(Boolean) as Story[]
   return c.json(stories)
 })
 
@@ -27,13 +28,13 @@ app.get('/:id', async (c) => {
   if (!story) return c.json({ error: 'not found' }, 404)
 
   const chapterKeys = await kv.list({ prefix: `chapter:${id}:` })
-  const chapters = []
-  for (const key of chapterKeys.keys) {
-    const cid = key.name.split(':').slice(2).join(':')
-    const ch = await getJson<any>(kv, KEYS.chapter(id, cid))
-    if (ch) chapters.push(ch)
-  }
-  chapters.sort((a, b) => a.number - b.number)
+  const chapterResults = await Promise.all(
+    chapterKeys.keys.map(async key => {
+      const cid = key.name.split(':').slice(2).join(':')
+      return getJson<any>(kv, KEYS.chapter(id, cid))
+    })
+  )
+  const chapters = chapterResults.filter((c): c is any => c !== null).sort((a, b) => a.number - b.number)
 
   return c.json({ story, chapters })
 })

@@ -25,13 +25,13 @@ app.get('/:storyId', async (c) => {
   const err = validateStoryId(storyId)
   if (err) return c.json({ error: err }, 400)
   const chapterKeys = await kv.list({ prefix: `chapter:${storyId}:` })
-  const chapters: Chapter[] = []
-  for (const key of chapterKeys.keys) {
-    const cid = key.name.split(':').slice(2).join(':')
-    const ch = await getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
-    if (ch) chapters.push(ch)
-  }
-  chapters.sort((a, b) => a.number - b.number)
+  const chapterResults = await Promise.all(
+    chapterKeys.keys.map(async key => {
+      const cid = key.name.split(':').slice(2).join(':')
+      return getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
+    })
+  )
+  const chapters = chapterResults.filter((c): c is Chapter => c !== null).sort((a, b) => a.number - b.number)
   return c.json(chapters)
 })
 

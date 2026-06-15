@@ -30,6 +30,10 @@ export default function LazyImage({ src, alt, className = '', onLoad }: LazyImag
     return () => obs.disconnect()
   }, [])
 
+  useEffect(() => {
+    setLoaded(false)
+  }, [src])
+
   return (
     <div ref={imgRef} className={`relative overflow-hidden ${className}`}>
       <div className="absolute inset-0 bg-zinc-800 animate-pulse" />

@@ -20,11 +20,10 @@ app.get('/list/:storyId/:chapterId', async (c) => {
     .filter(n => !isNaN(n))
     .sort((a, b) => a - b)
 
-  const pages: PageRecord[] = []
-  for (const num of pageNums) {
-    const page = await getJson<PageRecord>(kv, KEYS.page(storyId, chapterId, num))
-    if (page) pages.push(page)
-  }
+  const pageResults = await Promise.all(
+    pageNums.map(num => getJson<PageRecord>(kv, KEYS.page(storyId, chapterId, num)))
+  )
+  const pages = pageResults.filter(Boolean) as PageRecord[]
 
   return c.json({ pages, chapterId })
 })

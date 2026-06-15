@@ -1,5 +1,5 @@
-import { useParams, Link } from 'react-router-dom'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams, useLocation, Link } from 'react-router-dom'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { api } from '../services/api'
 import { useReader } from '../hooks/useReader'
 import { usePrefetch } from '../hooks/usePrefetch'
@@ -11,19 +11,23 @@ import type { Chapter } from '../types'
 
 export default function ReaderPage() {
   const { storyId, chapterId } = useParams<{ storyId: string; chapterId: string }>()
+  const location = useLocation()
   const { mode, toggleMode, currentPage, setCurrentPage, totalPages, setTotalPages } = useReader()
   const [pageFileIds, setPageFileIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
+  const [chapters, setChapters] = useState<Chapter[]>(
+    ((location.state as any)?.chapters as Chapter[] | undefined) ?? []
+  )
 
   useEffect(() => {
     if (!storyId) return
+    if (chapters.length > 0) return
     api.chapters.list(storyId).then(chs => {
       chs.sort((a, b) => a.number - b.number)
       setChapters(chs)
     }).catch(() => {})
-  }, [storyId])
+  }, [storyId, chapters.length])
 
   const chapterIdx = chapters.findIndex(c => c.id === chapterId)
   const prevChapterId = chapterIdx > 0 ? chapters[chapterIdx - 1].id : null
@@ -51,18 +55,23 @@ export default function ReaderPage() {
     setCurrentPage(page)
   }, [setCurrentPage])
 
+  const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!storyId || !chapterId || !chapterNumber || pageFileIds.length === 0) return
-    saveProgress(storyId, {
-      chapterId,
-      chapterNumber,
-      pageNumber: currentPage,
-      totalPages,
-    })
+    if (progressTimer.current) clearTimeout(progressTimer.current)
+    progressTimer.current = setTimeout(() => {
+      saveProgress(storyId, {
+        chapterId,
+        chapterNumber,
+        pageNumber: currentPage,
+        totalPages,
+      })
+    }, 500)
+    return () => { if (progressTimer.current) clearTimeout(progressTimer.current) }
   }, [storyId, chapterId, chapterNumber, currentPage, totalPages, pageFileIds.length])
 
   const prefetchUrls = useMemo(() => {
-    return pageFileIds.slice(currentPage - 1, currentPage - 1 + (mode === 'scroll' ? 4 : 3))
+    return pageFileIds.slice(currentPage, currentPage + (mode === 'scroll' ? 4 : 3))
       .map((id) => api.imageUrl(id))
   }, [pageFileIds, currentPage, mode])
 

@@ -41,7 +41,7 @@ export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumbe
   useEffect(() => {
     const el = pageRefs.current[currentPage - 1]
     if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' })
-  }, [])
+  }, [currentPage])
 
   return (
     <div className="min-h-screen bg-zinc-950">

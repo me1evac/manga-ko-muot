@@ -103,6 +103,7 @@ export default function StoryPage() {
             <Link
               key={ch.id}
               to={`/reader/${story.id}/${ch.id}`}
+              state={{ chapters }}
               className="block bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-900 hover:border-zinc-600 transition-all"
             >
               <div className="flex items-center justify-between">
