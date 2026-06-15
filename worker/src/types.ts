@@ -14,6 +14,7 @@ export interface Chapter {
   title: string
   number: number
   pageCount: number
+  pageFileIds?: string[]
   createdAt: number
 }
 

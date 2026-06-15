@@ -88,6 +88,7 @@ app.post('/', async (c) => {
   }
 
   const pageRecords: PageRecord[] = []
+  const newFileIds: string[] = []
 
   for (let i = 0; i < files.length; i++) {
     if (i > 0) {
@@ -111,10 +112,13 @@ app.post('/', async (c) => {
 
     await putJson(kv, KEYS.page(storyId, chapterId, pageNum), page)
     pageRecords.push(page)
+    newFileIds.push(fileId)
     pageNum++
   }
 
-  chapter.pageCount = pageNum - 1
+  const existingFileIds: string[] = chapter.pageFileIds ?? []
+  chapter.pageFileIds = [...existingFileIds, ...newFileIds]
+  chapter.pageCount = chapter.pageFileIds.length
   await putJson(kv, KEYS.chapter(storyId, chapterId), chapter)
 
   return c.json({ pages: pageRecords, totalPages: chapter.pageCount }, 201)

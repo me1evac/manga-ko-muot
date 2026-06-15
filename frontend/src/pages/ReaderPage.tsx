@@ -36,9 +36,19 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (!storyId || !chapterId) return
+    if (chapters.length === 0) return
+
+    const currentChapter = chapters.find(c => c.id === chapterId)
+    if (currentChapter?.pageFileIds && currentChapter.pageFileIds.length > 0) {
+      setPageFileIds(currentChapter.pageFileIds)
+      setTotalPages(currentChapter.pageFileIds.length)
+      setCurrentPage(1)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
-
     api.pages.list(storyId!, chapterId)
       .then((data) => {
         const sorted = data.pages.sort((a, b) => a.pageNumber - b.pageNumber)
@@ -49,7 +59,17 @@ export default function ReaderPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [storyId, chapterId, setCurrentPage, setTotalPages])
+  }, [storyId, chapterId, chapters, setCurrentPage, setTotalPages])
+
+  useEffect(() => {
+    if (!nextChapterId || !storyId || loading || chapters.length === 0) return
+    const nextChapter = chapters.find(c => c.id === nextChapterId)
+    if (nextChapter?.pageFileIds) return
+    const timer = setTimeout(() => {
+      api.pages.list(storyId!, nextChapterId).catch(() => {})
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [nextChapterId, storyId, loading, chapters])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)

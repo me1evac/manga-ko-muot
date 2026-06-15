@@ -12,6 +12,19 @@ const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', cors())
 
+app.use('/api/stories/*', async (c, next) => {
+  await next()
+  if (c.req.method === 'GET') c.header('Cache-Control', 'public, max-age=10, s-maxage=30')
+})
+app.use('/api/chapters/*', async (c, next) => {
+  await next()
+  if (c.req.method === 'GET') c.header('Cache-Control', 'public, max-age=10, s-maxage=30')
+})
+app.use('/api/pages/*', async (c, next) => {
+  await next()
+  if (c.req.method === 'GET') c.header('Cache-Control', 'public, max-age=10, s-maxage=30')
+})
+
 app.route('/api/stories', storiesHandler)
 app.route('/api/chapters', chaptersHandler)
 app.route('/api/images', pagesHandler)
