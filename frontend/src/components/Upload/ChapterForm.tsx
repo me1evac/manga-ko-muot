@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
@@ -23,16 +23,28 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
   const [title, setTitle] = useState('')
   const [number, setNumber] = useState('1')
   const [files, setFiles] = useState<File[]>([])
+  const [filePreviews, setFilePreviews] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const filesRef = useRef(files)
+  filesRef.current = files
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [createdChapter, setCreatedChapter] = useState<Chapter | null>(null)
 
+  useEffect(() => {
+    return () => {
+      filePreviews.forEach(u => URL.revokeObjectURL(u))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const onDrop = useCallback((accepted: File[]) => {
-    const remaining = MAX_FILES - files.length
+    const remaining = MAX_FILES - filesRef.current.length
     const toAdd = accepted.slice(0, remaining)
+    const urls = toAdd.map(f => URL.createObjectURL(f))
     setFiles((prev) => [...prev, ...toAdd])
-  }, [files.length])
+    setFilePreviews((prev) => [...prev, ...urls])
+  }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -45,7 +57,9 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
   })
 
   const removeFile = (i: number) => {
+    URL.revokeObjectURL(filePreviews[i])
     setFiles((prev) => prev.filter((_, idx) => idx !== i))
+    setFilePreviews((prev) => prev.filter((_, idx) => idx !== i))
   }
 
   const handleCreateChapter = async () => {
@@ -75,8 +89,10 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
           setProgress(Math.round((loaded / total) * 100))
         }
       )
+      filePreviews.forEach(u => URL.revokeObjectURL(u))
       setToast(`Uploaded ${result.pages.length} pages`)
       setFiles([])
+      setFilePreviews([])
       setCreatedChapter(null)
       setTitle('')
       setNumber('1')
@@ -198,7 +214,7 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
                     className="relative w-16 h-20 rounded overflow-hidden bg-zinc-800 group"
                   >
                     <img
-                      src={URL.createObjectURL(f)}
+                      src={filePreviews[i]}
                       alt=""
                       className="w-full h-full object-cover"
                     />

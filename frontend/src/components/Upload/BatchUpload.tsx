@@ -52,6 +52,14 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const blobUrlsRef = useRef<string[]>([])
+
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach(u => URL.revokeObjectURL(u))
+      blobUrlsRef.current = []
+    }
+  }, [])
 
   useEffect(() => {
     const el = inputRef.current
@@ -77,13 +85,16 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
     const chapterNumber = extracted ??
       (queue.length > 0 ? Math.max(...queue.map(q => q.chapterNumber)) + 1 : 1)
 
+    const thumbUrls = files.slice(0, 3).map(f => URL.createObjectURL(f))
+    blobUrlsRef.current.push(...thumbUrls)
+
     const item: QueueItem = {
       id: nextId++,
       storyId: stories[0]?.id ?? '',
       files,
       chapterNumber,
       title: `Chapter ${chapterNumber}`,
-      thumbnails: files.slice(0, 3).map(f => URL.createObjectURL(f)),
+      thumbnails: thumbUrls,
       status: 'pending',
     }
 
@@ -92,6 +103,13 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
   }
 
   function removeItem(id: number) {
+    const removed = queue.find(q => q.id === id)
+    if (removed) {
+      removed.thumbnails.forEach(u => {
+        URL.revokeObjectURL(u)
+        blobUrlsRef.current = blobUrlsRef.current.filter(b => b !== u)
+      })
+    }
     setQueue(prev => prev.filter(q => q.id !== id))
   }
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Env, PageRecord } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { sendPhoto } from '../services/telegram'
+import { validateStoryId, validateChapterId } from '../validate'
 
 const STAGGER_MS = 3000
 const MAX_FILES = 70
@@ -56,6 +57,9 @@ app.post('/', async (c) => {
   if (!storyId || !chapterId) {
     return c.json({ error: 'storyId and chapterId required' }, 400)
   }
+  let err = validateStoryId(storyId)
+  if (!err) err = validateChapterId(chapterId)
+  if (err) return c.json({ error: err }, 400)
 
   if (files.length === 0 || files.length > MAX_FILES) {
     return c.json({ error: `upload between 1 and ${MAX_FILES} files` }, 400)
@@ -73,9 +77,17 @@ app.post('/', async (c) => {
   const chapter = await getJson<any>(kv, KEYS.chapter(storyId, chapterId))
   if (!chapter) return c.json({ error: 'chapter not found' }, 404)
 
+  const pagePrefix = `page:${storyId}:${chapterId}:`
+  const existingPageKeys = await kv.list({ prefix: pagePrefix })
+  let pageNum = 1
+  if (existingPageKeys.keys.length > 0) {
+    const nums = existingPageKeys.keys
+      .map(k => parseInt(k.name.split(':').pop()!, 10))
+      .filter(n => !isNaN(n))
+    if (nums.length > 0) pageNum = Math.max(...nums) + 1
+  }
+
   const pageRecords: PageRecord[] = []
-  const existingPages = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
-  let pageNum = existingPages.length > 0 ? Math.max(...existingPages) + 1 : 1
 
   for (let i = 0; i < files.length; i++) {
     if (i > 0) {
@@ -99,16 +111,13 @@ app.post('/', async (c) => {
 
     await putJson(kv, KEYS.page(storyId, chapterId, pageNum), page)
     pageRecords.push(page)
-    existingPages.push(pageNum)
     pageNum++
   }
 
-  await putJson(kv, KEYS.pageList(storyId, chapterId), existingPages)
-
-  chapter.pageCount = existingPages.length
+  chapter.pageCount = pageNum - 1
   await putJson(kv, KEYS.chapter(storyId, chapterId), chapter)
 
-  return c.json({ pages: pageRecords, totalPages: existingPages.length }, 201)
+  return c.json({ pages: pageRecords, totalPages: chapter.pageCount }, 201)
 })
 
 export default app

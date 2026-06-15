@@ -2,13 +2,9 @@ import type { Story, Chapter, PageRecord } from '../types'
 
 const KEYS = {
   story: (id: string) => `story:${id}`,
-  storyList: 'story:list',
   chapter: (sid: string, cid: string) => `chapter:${sid}:${cid}`,
-  chapterList: (sid: string) => `chapter:list:${sid}`,
   page: (sid: string, cid: string, num: number) => `page:${sid}:${cid}:${num}`,
-  pageList: (sid: string, cid: string) => `page:list:${sid}:${cid}`,
   configPassword: 'config:password',
-  storyNextId: 'config:storyNextId',
   chapterNextId: (sid: string) => `config:chapterNextId:${sid}`,
 }
 

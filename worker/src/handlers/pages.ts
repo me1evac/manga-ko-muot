@@ -1,18 +1,27 @@
 import { Hono } from 'hono'
 import type { Env, PageRecord } from '../types'
-import { KEYS, getJson, putJson } from '../store/kv'
+import { KEYS, getJson } from '../store/kv'
 import { getFileInfo, getFileUrl } from '../services/telegram'
+import { validateStoryId, validateChapterId } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/list/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId, chapterId } = c.req.param()
+  let err = validateStoryId(storyId)
+  if (!err) err = validateChapterId(chapterId)
+  if (err) return c.json({ error: err }, 400)
 
-  const pageNums = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
+  const pagePrefix = `page:${storyId}:${chapterId}:`
+  const pageKeys = await kv.list({ prefix: pagePrefix })
+  const pageNums = pageKeys.keys
+    .map(k => parseInt(k.name.split(':').pop()!, 10))
+    .filter(n => !isNaN(n))
+    .sort((a, b) => a - b)
+
   const pages: PageRecord[] = []
-
-  for (const num of pageNums.sort((a, b) => a - b)) {
+  for (const num of pageNums) {
     const page = await getJson<PageRecord>(kv, KEYS.page(storyId, chapterId, num))
     if (page) pages.push(page)
   }

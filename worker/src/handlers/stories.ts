@@ -1,14 +1,17 @@
 import { Hono } from 'hono'
 import type { Env, Story } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
+import { validateStoryId } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/', async (c) => {
   const kv = c.env.MANGA_KV
-  const ids = await getJson<string[]>(kv, KEYS.storyList) ?? []
+  const storyKeys = await kv.list({ prefix: 'story:' })
   const stories: Story[] = []
-  for (const id of ids) {
+  for (const key of storyKeys.keys) {
+    const id = key.name.replace('story:', '')
+    if (!id || id === 'list') continue
     const s = await getJson<Story>(kv, KEYS.story(id))
     if (s) stories.push(s)
   }
@@ -18,12 +21,15 @@ app.get('/', async (c) => {
 app.get('/:id', async (c) => {
   const kv = c.env.MANGA_KV
   const id = c.req.param('id')
+  const err = validateStoryId(id)
+  if (err) return c.json({ error: err }, 400)
   const story = await getJson<Story>(kv, KEYS.story(id))
   if (!story) return c.json({ error: 'not found' }, 404)
 
-  const chapterIds = await getJson<string[]>(kv, KEYS.chapterList(id)) ?? []
+  const chapterKeys = await kv.list({ prefix: `chapter:${id}:` })
   const chapters = []
-  for (const cid of chapterIds) {
+  for (const key of chapterKeys.keys) {
+    const cid = key.name.split(':').slice(2).join(':')
     const ch = await getJson<any>(kv, KEYS.chapter(id, cid))
     if (ch) chapters.push(ch)
   }
@@ -38,6 +44,8 @@ app.post('/', async (c) => {
   if (!body.id || !body.title) {
     return c.json({ error: 'id and title required' }, 400)
   }
+  const err = validateStoryId(body.id)
+  if (err) return c.json({ error: err }, 400)
 
   const existing = await getJson<Story>(kv, KEYS.story(body.id))
   if (existing) return c.json({ error: 'story already exists' }, 409)
@@ -55,16 +63,14 @@ app.post('/', async (c) => {
 
   await putJson(kv, KEYS.story(story.id), story)
 
-  const ids = await getJson<string[]>(kv, KEYS.storyList) ?? []
-  ids.push(story.id)
-  await putJson(kv, KEYS.storyList, ids)
-
   return c.json(story, 201)
 })
 
 app.patch('/:id', async (c) => {
   const kv = c.env.MANGA_KV
   const id = c.req.param('id')
+  const err = validateStoryId(id)
+  if (err) return c.json({ error: err }, 400)
   const story = await getJson<Story>(kv, KEYS.story(id))
   if (!story) return c.json({ error: 'not found' }, 404)
 
@@ -84,11 +90,9 @@ app.patch('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const kv = c.env.MANGA_KV
   const id = c.req.param('id')
+  const err = validateStoryId(id)
+  if (err) return c.json({ error: err }, 400)
   await kv.delete(KEYS.story(id))
-
-  const ids = await getJson<string[]>(kv, KEYS.storyList) ?? []
-  await putJson(kv, KEYS.storyList, ids.filter((i) => i !== id))
-
   return c.json({ ok: true })
 })
 

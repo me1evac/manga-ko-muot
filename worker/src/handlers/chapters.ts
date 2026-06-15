@@ -1,25 +1,33 @@
 import { Hono } from 'hono'
 import type { Env, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
+import { validateStoryId, validateChapterId } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId, chapterId } = c.req.param()
+  let err = validateStoryId(storyId)
+  if (!err) err = validateChapterId(chapterId)
+  if (err) return c.json({ error: err }, 400)
   const chapter = await getJson<Chapter>(kv, KEYS.chapter(storyId, chapterId))
   if (!chapter) return c.json({ error: 'not found' }, 404)
 
-  const pageNums = await getJson<number[]>(kv, KEYS.pageList(storyId, chapterId)) ?? []
-  return c.json({ chapter, pageCount: pageNums.length })
+  const pagePrefix = `page:${storyId}:${chapterId}:`
+  const pageKeys = await kv.list({ prefix: pagePrefix })
+  return c.json({ chapter, pageCount: pageKeys.keys.length })
 })
 
 app.get('/:storyId', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId } = c.req.param()
-  const ids = await getJson<string[]>(kv, KEYS.chapterList(storyId)) ?? []
+  const err = validateStoryId(storyId)
+  if (err) return c.json({ error: err }, 400)
+  const chapterKeys = await kv.list({ prefix: `chapter:${storyId}:` })
   const chapters: Chapter[] = []
-  for (const cid of ids) {
+  for (const key of chapterKeys.keys) {
+    const cid = key.name.split(':').slice(2).join(':')
     const ch = await getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
     if (ch) chapters.push(ch)
   }
@@ -33,6 +41,8 @@ app.post('/', async (c) => {
   if (!body.storyId || !body.title || body.number === undefined) {
     return c.json({ error: 'storyId, title, number required' }, 400)
   }
+  const err = validateStoryId(body.storyId)
+  if (err) return c.json({ error: err }, 400)
 
   const counterKey = KEYS.chapterNextId(body.storyId)
   const nextNum = (parseInt((await kv.get(counterKey)) ?? '0', 10)) + 1
@@ -49,16 +59,15 @@ app.post('/', async (c) => {
 
   await putJson(kv, KEYS.chapter(chapter.storyId, chapter.id), chapter)
 
-  const list = await getJson<string[]>(kv, KEYS.chapterList(chapter.storyId)) ?? []
-  list.push(chapter.id)
-  await putJson(kv, KEYS.chapterList(chapter.storyId), list)
-
   return c.json(chapter, 201)
 })
 
 app.patch('/:storyId/:chapterId/reorder', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId, chapterId } = c.req.param()
+  let err = validateStoryId(storyId)
+  if (!err) err = validateChapterId(chapterId)
+  if (err) return c.json({ error: err }, 400)
   const { newNumber } = await c.req.json<{ newNumber: number }>()
 
   const chapter = await getJson<Chapter>(kv, KEYS.chapter(storyId, chapterId))
@@ -73,11 +82,10 @@ app.patch('/:storyId/:chapterId/reorder', async (c) => {
 app.delete('/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId, chapterId } = c.req.param()
+  let err = validateStoryId(storyId)
+  if (!err) err = validateChapterId(chapterId)
+  if (err) return c.json({ error: err }, 400)
   await kv.delete(KEYS.chapter(storyId, chapterId))
-
-  const list = await getJson<string[]>(kv, KEYS.chapterList(storyId)) ?? []
-  await putJson(kv, KEYS.chapterList(storyId), list.filter((id) => id !== chapterId))
-
   return c.json({ ok: true })
 })
 
