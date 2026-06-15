@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import LazyImage from '../Common/LazyImage'
+import { ChevronLeftIcon, ChevronRightIcon } from '../Icons'
 
 interface ScrollReaderProps {
   fileIds: string[]
@@ -84,20 +85,25 @@ export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumbe
       </div>
 
       {(prevChapterId || nextChapterId) && (
-        <div className="max-w-3xl mx-auto px-4 py-8 flex items-center justify-center gap-4">
-          {prevChapterId ? (
-            <Link to={`/reader/${storyId}/${prevChapterId}`} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors">
-              &lt; Prev
+        <div className="max-w-3xl mx-auto px-4 py-10 flex items-center justify-center gap-6">
+          {prevChapterId && (
+            <Link
+              to={`/reader/${storyId}/${prevChapterId}`}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+              <span>Prev</span>
             </Link>
-          ) : <div className="w-16" />}
-          <Link to={`/story/${storyId}`} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-            Chapter List
-          </Link>
-          {nextChapterId ? (
-            <Link to={`/reader/${storyId}/${nextChapterId}`} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors">
-              Next &gt;
+          )}
+          {nextChapterId && (
+            <Link
+              to={`/reader/${storyId}/${nextChapterId}`}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              <span>Next</span>
+              <ChevronRightIcon className="w-4 h-4" />
             </Link>
-          ) : <div className="w-16" />}
+          )}
         </div>
       )}
     </div>

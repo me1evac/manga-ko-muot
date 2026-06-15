@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import LazyImage from '../Common/LazyImage'
+import { ChevronLeftIcon, ChevronRightIcon } from '../Icons'
 
 interface LeftRightReaderProps {
   fileIds: string[]
@@ -88,20 +89,40 @@ export default function LeftRightReader({
       onClick={showTemporarily}
     >
       <div
-        className={`absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/70 to-transparent px-4 h-12 flex items-center justify-between transition-opacity duration-300 ${
+        className={`absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/70 to-transparent px-4 h-14 flex items-center justify-between transition-opacity duration-300 ${
           showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
-        <Link to={`/story/${storyId}`} className="text-sm text-zinc-300 hover:text-white transition-colors">
-          ← Back
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to={`/story/${storyId}`} className="text-sm text-zinc-300 hover:text-white transition-colors">
+            ← Back
+          </Link>
+          {prevChapterId && (
+            <Link
+              to={`/reader/${storyId}/${prevChapterId}`}
+              className="flex items-center gap-1.5 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+              <span>Prev</span>
+            </Link>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500">
             {currentPage}/{totalPages}
           </span>
-          <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300">
-            Scroll Mode
+          <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1.5 rounded transition-colors text-zinc-300">
+            Scroll
           </button>
+          {nextChapterId && (
+            <Link
+              to={`/reader/${storyId}/${nextChapterId}`}
+              className="flex items-center gap-1.5 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded text-sm transition-colors"
+            >
+              <span>Next</span>
+              <ChevronRightIcon className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 
@@ -114,21 +135,11 @@ export default function LeftRightReader({
       </div>
 
       <div
-        className={`absolute bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/70 to-transparent px-4 h-12 flex items-center justify-center gap-4 transition-opacity duration-300 ${
+        className={`absolute bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/70 to-transparent px-4 h-10 flex items-center justify-center transition-opacity duration-300 ${
           showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
-        {prevChapterId ? (
-          <Link to={`/reader/${storyId}/${prevChapterId}`} className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1 rounded text-sm transition-colors">
-            &lt; Prev
-          </Link>
-        ) : <div className="w-16" />}
         {chapterNumber && <span className="text-xs text-zinc-400">Ch.{chapterNumber}</span>}
-        {nextChapterId ? (
-          <Link to={`/reader/${storyId}/${nextChapterId}`} className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-3 py-1 rounded text-sm transition-colors">
-            Next &gt;
-          </Link>
-        ) : <div className="w-16" />}
       </div>
 
       <div className="absolute inset-0 flex">
