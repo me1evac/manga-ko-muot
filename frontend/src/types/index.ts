@@ -31,6 +31,14 @@ export interface PageRecord {
 export interface StoryWithChapters {
   story: Story
   chapters: Chapter[]
+  total: number
+  offset: number
+}
+
+export interface ChapterIdInfo {
+  id: string
+  title: string
+  number: number
 }
 
 export type ReadingMode = 'scroll' | 'left-right'

@@ -35,6 +35,25 @@ app.get('/:storyId', async (c) => {
   return c.json(chapters)
 })
 
+app.get('/:storyId/ids', async (c) => {
+  const kv = c.env.MANGA_KV
+  const { storyId } = c.req.param()
+  const err = validateStoryId(storyId)
+  if (err) return c.json({ error: err }, 400)
+  const chapterKeys = await kv.list({ prefix: `chapter:${storyId}:` })
+  const chapters = (
+    await Promise.all(
+      chapterKeys.keys.map(async key => {
+        const cid = key.name.split(':').slice(2).join(':')
+        const ch = await getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
+        if (!ch) return null
+        return { id: ch.id, title: ch.title, number: ch.number }
+      })
+    )
+  ).filter((c): c is { id: string; title: string; number: number } => c !== null).sort((a, b) => a.number - b.number)
+  return c.json({ chapters })
+})
+
 app.post('/', async (c) => {
   const kv = c.env.MANGA_KV
   const body = await c.req.json<Partial<Chapter>>()

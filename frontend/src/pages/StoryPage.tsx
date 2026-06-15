@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useStory } from '../hooks/useManga'
 import { api } from '../services/api'
@@ -5,11 +6,14 @@ import { formatDate } from '../utils/image'
 import { loadProgress } from '../hooks/useReadProgress'
 import Skeleton from '../components/Common/Skeleton'
 
+const LIMIT = 20
+
 export default function StoryPage() {
   const { id } = useParams<{ id: string }>()
-  const { data, loading, error } = useStory(id)
+  const [offset, setOffset] = useState(0)
+  const { data, loading, error } = useStory(id, { offset, limit: LIMIT })
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         <Skeleton className="h-48 w-full" />
@@ -35,8 +39,10 @@ export default function StoryPage() {
     )
   }
 
-  const { story, chapters } = data
+  const { story, chapters, total } = data
   const progress = loadProgress(story.id)
+  const totalPages = Math.ceil(total / LIMIT)
+  const currentPage = Math.floor(offset / LIMIT) + 1
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -92,10 +98,10 @@ export default function StoryPage() {
       </div>
 
       <h2 className="text-lg font-semibold mb-4">
-        Chapters ({chapters.length})
+        Chapters ({total})
       </h2>
 
-      {chapters.length === 0 ? (
+      {total === 0 ? (
         <p className="text-zinc-600 text-sm">No chapters yet</p>
       ) : (
         <div className="space-y-2">
@@ -103,7 +109,6 @@ export default function StoryPage() {
             <Link
               key={ch.id}
               to={`/reader/${story.id}/${ch.id}`}
-              state={{ chapters }}
               className="block bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-900 hover:border-zinc-600 transition-all"
             >
               <div className="flex items-center justify-between">
@@ -117,6 +122,28 @@ export default function StoryPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8 pb-8">
+          <button
+            onClick={() => setOffset(o => Math.max(0, o - LIMIT))}
+            disabled={offset === 0}
+            className="px-4 py-2 text-sm bg-zinc-800 rounded-lg hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-zinc-500">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setOffset(o => o + LIMIT)}
+            disabled={offset + LIMIT >= total}
+            className="px-4 py-2 text-sm bg-zinc-800 rounded-lg hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

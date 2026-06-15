@@ -1,4 +1,4 @@
-import type { Story, Chapter, StoryWithChapters, PageRecord } from '../types'
+import type { Story, Chapter, StoryWithChapters, ChapterIdInfo, PageRecord } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -51,7 +51,16 @@ export { clearCache }
 export const api = {
   stories: {
     list: () => request<Story[]>('/stories'),
-    get: (id: string) => request<StoryWithChapters>(`/stories/${id}`),
+    get: (id: string, params?: { offset?: number; limit?: number }) => {
+      let path = `/stories/${id}`
+      if (params) {
+        const qs = new URLSearchParams()
+        if (params.offset !== undefined) qs.set('offset', String(params.offset))
+        if (params.limit !== undefined) qs.set('limit', String(params.limit))
+        path += '?' + qs.toString()
+      }
+      return request<StoryWithChapters>(path)
+    },
     create: (data: Partial<Story>) =>
       request<Story>('/stories', {
         method: 'POST',
@@ -73,6 +82,8 @@ export const api = {
 
   chapters: {
     list: (storyId: string) => request<Chapter[]>(`/chapters/${storyId}`),
+    ids: (storyId: string) =>
+      request<{ chapters: ChapterIdInfo[] }>(`/chapters/${storyId}/ids`),
     get: (storyId: string, chapterId: string) =>
       request<{ chapter: Chapter; pageCount: number }>(
         `/chapters/${storyId}/${chapterId}`

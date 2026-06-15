@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api, clearCache } from '../services/api'
-import type { Story, Chapter, StoryWithChapters } from '../types'
+import type { Story, Chapter, ChapterIdInfo, StoryWithChapters } from '../types'
 
 export function useStories() {
   const [stories, setStories] = useState<Story[]>([])
@@ -26,7 +26,7 @@ export function useStories() {
   return { stories, loading, error, refetch: fetch }
 }
 
-export function useStory(id: string | undefined) {
+export function useStory(id: string | undefined, params?: { offset?: number; limit?: number }) {
   const [data, setData] = useState<StoryWithChapters | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +35,7 @@ export function useStory(id: string | undefined) {
     if (!id) return
     try {
       setLoading(true)
-      const d = await api.stories.get(id)
+      const d = await api.stories.get(id, params)
       setData(d)
       setError(null)
     } catch (e: any) {
@@ -43,11 +43,33 @@ export function useStory(id: string | undefined) {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, params?.offset, params?.limit])
 
   useEffect(() => { fetch() }, [fetch])
 
   return { data, loading, error, refetch: fetch }
+}
+
+export function useChapterIds(storyId: string | undefined) {
+  const [chapterIds, setChapterIds] = useState<ChapterIdInfo[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetch = useCallback(async () => {
+    if (!storyId) return
+    try {
+      setLoading(true)
+      const { chapters } = await api.chapters.ids(storyId)
+      setChapterIds(chapters)
+    } catch {
+      setChapterIds([])
+    } finally {
+      setLoading(false)
+    }
+  }, [storyId])
+
+  useEffect(() => { fetch() }, [fetch])
+
+  return { chapterIds, loading, refetch: fetch }
 }
 
 export function useChapters(storyId: string | undefined) {

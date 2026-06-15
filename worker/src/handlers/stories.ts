@@ -27,6 +27,9 @@ app.get('/:id', async (c) => {
   const story = await getJson<Story>(kv, KEYS.story(id))
   if (!story) return c.json({ error: 'not found' }, 404)
 
+  const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '20', 10), 1), 100)
+  const offset = Math.max(parseInt(c.req.query('offset') ?? '0', 10), 0)
+
   const chapterKeys = await kv.list({ prefix: `chapter:${id}:` })
   const chapterResults = await Promise.all(
     chapterKeys.keys.map(async key => {
@@ -36,7 +39,7 @@ app.get('/:id', async (c) => {
   )
   const chapters = chapterResults.filter((c): c is any => c !== null).sort((a, b) => a.number - b.number)
 
-  return c.json({ story, chapters })
+  return c.json({ story, chapters: chapters.slice(offset, offset + limit), total: chapters.length, offset })
 })
 
 app.post('/', async (c) => {

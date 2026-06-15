@@ -1,51 +1,30 @@
-import { useParams, useLocation, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { api } from '../services/api'
 import { useReader } from '../hooks/useReader'
 import { usePrefetch } from '../hooks/usePrefetch'
+import { useChapterIds } from '../hooks/useManga'
 import ScrollReader from '../components/Reader/ScrollReader'
 import LeftRightReader from '../components/Reader/LeftRightReader'
 import Skeleton from '../components/Common/Skeleton'
 import { saveProgress } from '../hooks/useReadProgress'
-import type { Chapter } from '../types'
 
 export default function ReaderPage() {
   const { storyId, chapterId } = useParams<{ storyId: string; chapterId: string }>()
-  const location = useLocation()
   const { mode, toggleMode, currentPage, setCurrentPage, totalPages, setTotalPages } = useReader()
   const [pageFileIds, setPageFileIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>(
-    ((location.state as any)?.chapters as Chapter[] | undefined) ?? []
-  )
+  const { chapterIds } = useChapterIds(storyId)
 
-  useEffect(() => {
-    if (!storyId) return
-    if (chapters.length > 0) return
-    api.chapters.list(storyId).then(chs => {
-      chs.sort((a, b) => a.number - b.number)
-      setChapters(chs)
-    }).catch(() => {})
-  }, [storyId, chapters.length])
-
-  const chapterIdx = chapters.findIndex(c => c.id === chapterId)
-  const prevChapterId = chapterIdx > 0 ? chapters[chapterIdx - 1].id : null
-  const nextChapterId = chapterIdx < chapters.length - 1 ? chapters[chapterIdx + 1].id : null
-  const chapterNumber = chapters[chapterIdx]?.number
+  const chapterIdx = chapterIds.findIndex(c => c.id === chapterId)
+  const prevChapterId = chapterIdx > 0 ? chapterIds[chapterIdx - 1].id : null
+  const nextChapterId = chapterIdx < chapterIds.length - 1 ? chapterIds[chapterIdx + 1].id : null
+  const chapterNumber = chapterIds[chapterIdx]?.number
 
   useEffect(() => {
     if (!storyId || !chapterId) return
-    if (chapters.length === 0) return
-
-    const currentChapter = chapters.find(c => c.id === chapterId)
-    if (currentChapter?.pageFileIds && currentChapter.pageFileIds.length > 0) {
-      setPageFileIds(currentChapter.pageFileIds)
-      setTotalPages(currentChapter.pageFileIds.length)
-      setCurrentPage(1)
-      setLoading(false)
-      return
-    }
+    if (chapterIds.length === 0) return
 
     setLoading(true)
     setError(null)
@@ -59,17 +38,15 @@ export default function ReaderPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [storyId, chapterId, chapters, setCurrentPage, setTotalPages])
+  }, [storyId, chapterId, chapterIds, setCurrentPage, setTotalPages])
 
   useEffect(() => {
-    if (!nextChapterId || !storyId || loading || chapters.length === 0) return
-    const nextChapter = chapters.find(c => c.id === nextChapterId)
-    if (nextChapter?.pageFileIds) return
+    if (!nextChapterId || !storyId || loading || chapterIds.length === 0) return
     const timer = setTimeout(() => {
       api.pages.list(storyId!, nextChapterId).catch(() => {})
     }, 1000)
     return () => clearTimeout(timer)
-  }, [nextChapterId, storyId, loading, chapters])
+  }, [nextChapterId, storyId, loading, chapterIds])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
