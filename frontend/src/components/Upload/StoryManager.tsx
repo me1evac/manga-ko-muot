@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
 import type { Story, Chapter, StoryWithChapters } from '../../types'
+import { EditIcon, TrashIcon, XIcon, ChevronDownIcon, ChevronUpIcon } from '../Icons'
 
 interface StoryManagerProps {
   onChanged: () => void
@@ -11,6 +12,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [chaptersLoading, setChaptersLoading] = useState(false)
   const [storyData, setStoryData] = useState<StoryWithChapters | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ title: '', description: '', status: '' as Story['status'] })
@@ -32,8 +34,10 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
       return
     }
     setExpandedId(id)
+    setChaptersLoading(true)
     const data = await api.stories.get(id)
     setStoryData(data)
+    setChaptersLoading(false)
   }
 
   const startEdit = (s: Story) => {
@@ -166,22 +170,32 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
 
               {editingId !== s.id && (
                 <div className="flex items-center gap-1 ml-3 shrink-0">
-                  <button onClick={() => startEdit(s)} className="text-xs text-zinc-400 hover:text-white p-1" title="Edit">✎</button>
-                  <button onClick={() => deleteStory(s.id)} className="text-xs text-red-400 hover:text-red-300 p-1" title="Delete">✕</button>
-                  <button onClick={() => loadChapters(s.id)} className="text-xs text-zinc-400 hover:text-white p-1">
-                    {expandedId === s.id ? '▲' : '▼'}
+                  <button onClick={() => startEdit(s)} className="text-zinc-400 hover:text-white p-1" title="Edit">
+                    <EditIcon className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => deleteStory(s.id)} className="text-red-400 hover:text-red-300 p-1" title="Delete">
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => loadChapters(s.id)} className="text-zinc-400 hover:text-white p-1" title={expandedId === s.id ? 'Collapse' : 'Expand'}>
+                    {expandedId === s.id ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />}
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          {expandedId === s.id && storyData && (
+          {expandedId === s.id && (
             <div className="border-t border-zinc-800 px-4 py-3 space-y-2">
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Chapters</p>
-              {storyData.chapters.length === 0 ? (
+              {chaptersLoading && !storyData ? (
+                <div className="space-y-2 animate-pulse">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="h-8 bg-zinc-800/50 rounded" />
+                  ))}
+                </div>
+              ) : storyData && storyData.chapters.length === 0 ? (
                 <p className="text-xs text-zinc-600">No chapters</p>
-              ) : (
+              ) : storyData ? (
                 storyData.chapters.sort((a, b) => a.number - b.number).map((ch, i) => (
                   <div key={ch.id} className="flex items-center justify-between bg-zinc-800/50 rounded px-3 py-2">
                     <div className="flex items-center gap-3">
@@ -189,27 +203,33 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
                         <button
                           onClick={() => reorderChapter(s.id, ch, 'up')}
                           disabled={i === 0}
-                          className="text-[10px] text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
+                          className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
                           title="Move up"
-                        >▲</button>
+                        >
+                          <ChevronUpIcon className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => reorderChapter(s.id, ch, 'down')}
                           disabled={i === storyData.chapters.length - 1}
-                          className="text-[10px] text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
+                          className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
                           title="Move down"
-                        >▼</button>
+                        >
+                          <ChevronDownIcon className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                       <span className="text-xs text-zinc-300">{ch.title}</span>
                       <span className="text-[10px] text-zinc-500">Ch.{ch.number} · {ch.pageCount}p</span>
                     </div>
                     <button
                       onClick={() => deleteChapter(s.id, ch.id)}
-                      className="text-xs text-red-400 hover:text-red-300 p-1"
+                      className="text-red-400 hover:text-red-300 p-1"
                       title="Delete chapter"
-                    >✕</button>
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))
-              )}
+              ) : null}
             </div>
           )}
         </div>

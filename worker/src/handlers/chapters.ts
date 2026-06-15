@@ -5,6 +5,20 @@ import { validateStoryId, validateChapterId } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
 
+app.get('/:storyId/ids', async (c) => {
+  const kv = c.env.MANGA_KV
+  const { storyId } = c.req.param()
+  const err = validateStoryId(storyId)
+  if (err) return c.json({ error: err }, 400)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const ids = chapters.sort((a, b) => a.number - b.number).map(ch => ({
+    id: ch.id,
+    title: ch.title,
+    number: ch.number,
+  }))
+  return c.json({ chapters: ids })
+})
+
 app.get('/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
   const { storyId, chapterId } = c.req.param()
@@ -27,20 +41,6 @@ app.get('/:storyId', async (c) => {
   if (err) return c.json({ error: err }, 400)
   const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
   return c.json(chapters.sort((a, b) => a.number - b.number))
-})
-
-app.get('/:storyId/ids', async (c) => {
-  const kv = c.env.MANGA_KV
-  const { storyId } = c.req.param()
-  const err = validateStoryId(storyId)
-  if (err) return c.json({ error: err }, 400)
-  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
-  const ids = chapters.sort((a, b) => a.number - b.number).map(ch => ({
-    id: ch.id,
-    title: ch.title,
-    number: ch.number,
-  }))
-  return c.json({ chapters: ids })
 })
 
 app.post('/', async (c) => {

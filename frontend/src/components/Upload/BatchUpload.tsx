@@ -164,15 +164,18 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
   }
 
   async function handleUploadAll() {
-    const pending = queue.filter(q => q.status === 'pending')
+    const snapshot = queueRef.current
+    const pending = snapshot.filter(q => q.status === 'pending')
     if (pending.length === 0) return
     setUploading(true)
 
+    let completed = 0
+    let exists = 0
     const totalChunks = pending.reduce((sum, q) => sum + Math.ceil(q.files.length / MAX_FILES), 0)
     let chunksDone = 0
 
-    for (let i = 0; i < queue.length; i++) {
-      const q = queue[i]
+    for (let i = 0; i < snapshot.length; i++) {
+      const q = snapshot[i]
       if (q.status !== 'pending') continue
 
       setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'creating' } : item))
@@ -194,9 +197,11 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
         }
 
         setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'done' } : item))
+        completed++
       } catch (err: any) {
         if (/already exists|exists/i.test(err.message ?? '')) {
           setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'exists' } : item))
+          exists++
         } else {
           setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'error', error: err.message } : item))
         }
@@ -207,9 +212,12 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
     setProgress(100)
     onSuccess()
 
-    const done = queue.filter(q => q.status === 'done').length
-    const skipped = queue.filter(q => q.status === 'exists').length
-    setToast(`${done} chapter(s) uploaded, ${skipped} skipped (already exist)`)
+    // Auto-remove completed items from the visible queue after a brief pause
+    setTimeout(() => {
+      setQueue(prev => prev.filter(q => q.status !== 'done' && q.status !== 'exists'))
+    }, 2000)
+
+    setToast(`${completed} chapter(s) uploaded, ${exists} skipped (already exist)`)
   }
 
   const pendingCount = queue.filter(q => q.status === 'pending').length
@@ -267,14 +275,14 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
                       <img src={q.thumbnails[0]} alt="" className="w-full h-full object-cover" />
                     </div>
                   )}
-                  {!uploading && q.status === 'pending' && (
-                    <button
-                      onClick={() => removeItem(q.id)}
-                      className="text-zinc-600 hover:text-red-400 text-lg leading-none mt-0.5"
-                    >
-                      ×
-                    </button>
-                  )}
+{!uploading && (
+    <button
+      onClick={() => removeItem(q.id)}
+      className="text-zinc-600 hover:text-red-400 text-lg leading-none mt-0.5"
+    >
+      ×
+    </button>
+)}
                 </div>
               </div>
             </div>
