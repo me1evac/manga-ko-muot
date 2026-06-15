@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
 import type { Story } from '../../types'
+import { loadQueue, saveQueue } from '../../utils/queueStorage'
+import type { StoredQueueItem } from '../../utils/queueStorage'
 
 const MAX_FILES = 70
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -51,8 +53,52 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const blobUrlsRef = useRef<string[]>([])
+  const queueRef = useRef(queue)
+  queueRef.current = queue
+
+  useEffect(() => {
+    loadQueue().then((stored: StoredQueueItem[]) => {
+      const urls: string[] = []
+      const items: QueueItem[] = stored.map(s => {
+        const thumbs = s.files.slice(0, 3).map(f => URL.createObjectURL(f))
+        urls.push(...thumbs)
+        return {
+          id: s.id,
+          storyId: s.storyId,
+          files: s.files,
+          chapterNumber: s.chapterNumber,
+          title: s.title,
+          thumbnails: thumbs,
+          status: (s.status === 'pending' ? 'pending' : 'error') as QueueItem['status'],
+          error: undefined,
+        }
+      })
+      blobUrlsRef.current.push(...urls)
+      if (items.length > 0) {
+        nextId = Math.max(...items.map(i => i.id)) + 1
+      }
+      setQueue(items)
+      setLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!loaded) return
+    const items = queueRef.current
+      .filter(q => q.status === 'pending' || q.status === 'creating' || q.status === 'uploading' || q.status === 'error')
+      .map(q => ({
+        id: q.id,
+        storyId: q.storyId,
+        chapterNumber: q.chapterNumber,
+        title: q.title,
+        files: q.files,
+        status: (q.status === 'creating' || q.status === 'uploading' ? 'error' : q.status) as 'pending' | 'error',
+      }))
+    saveQueue(items)
+  }, [queue, loaded])
 
   useEffect(() => {
     return () => {
