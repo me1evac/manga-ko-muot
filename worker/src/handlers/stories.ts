@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { Env, Story } from '../types'
+import type { Env, Story, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId } from '../validate'
 
@@ -30,16 +30,10 @@ app.get('/:id', async (c) => {
   const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '20', 10), 1), 100)
   const offset = Math.max(parseInt(c.req.query('offset') ?? '0', 10), 0)
 
-  const chapterKeys = await kv.list({ prefix: `chapter:${id}:` })
-  const chapterResults = await Promise.all(
-    chapterKeys.keys.map(async key => {
-      const cid = key.name.split(':').slice(2).join(':')
-      return getJson<any>(kv, KEYS.chapter(id, cid))
-    })
-  )
-  const chapters = chapterResults.filter((c): c is any => c !== null).sort((a, b) => a.number - b.number)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(id))) ?? []
+  const sorted = chapters.sort((a, b) => a.number - b.number)
 
-  return c.json({ story, chapters: chapters.slice(offset, offset + limit), total: chapters.length, offset })
+  return c.json({ story, chapters: sorted.slice(offset, offset + limit), total: sorted.length, offset })
 })
 
 app.post('/', async (c) => {

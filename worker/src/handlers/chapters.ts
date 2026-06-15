@@ -11,7 +11,8 @@ app.get('/:storyId/:chapterId', async (c) => {
   let err = validateStoryId(storyId)
   if (!err) err = validateChapterId(chapterId)
   if (err) return c.json({ error: err }, 400)
-  const chapter = await getJson<Chapter>(kv, KEYS.chapter(storyId, chapterId))
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const chapter = chapters.find(ch => ch.id === chapterId)
   if (!chapter) return c.json({ error: 'not found' }, 404)
 
   const pagePrefix = `page:${storyId}:${chapterId}:`
@@ -24,15 +25,8 @@ app.get('/:storyId', async (c) => {
   const { storyId } = c.req.param()
   const err = validateStoryId(storyId)
   if (err) return c.json({ error: err }, 400)
-  const chapterKeys = await kv.list({ prefix: `chapter:${storyId}:` })
-  const chapterResults = await Promise.all(
-    chapterKeys.keys.map(async key => {
-      const cid = key.name.split(':').slice(2).join(':')
-      return getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
-    })
-  )
-  const chapters = chapterResults.filter((c): c is Chapter => c !== null).sort((a, b) => a.number - b.number)
-  return c.json(chapters)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  return c.json(chapters.sort((a, b) => a.number - b.number))
 })
 
 app.get('/:storyId/ids', async (c) => {
@@ -40,18 +34,13 @@ app.get('/:storyId/ids', async (c) => {
   const { storyId } = c.req.param()
   const err = validateStoryId(storyId)
   if (err) return c.json({ error: err }, 400)
-  const chapterKeys = await kv.list({ prefix: `chapter:${storyId}:` })
-  const chapters = (
-    await Promise.all(
-      chapterKeys.keys.map(async key => {
-        const cid = key.name.split(':').slice(2).join(':')
-        const ch = await getJson<Chapter>(kv, KEYS.chapter(storyId, cid))
-        if (!ch) return null
-        return { id: ch.id, title: ch.title, number: ch.number }
-      })
-    )
-  ).filter((c): c is { id: string; title: string; number: number } => c !== null).sort((a, b) => a.number - b.number)
-  return c.json({ chapters })
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const ids = chapters.sort((a, b) => a.number - b.number).map(ch => ({
+    id: ch.id,
+    title: ch.title,
+    number: ch.number,
+  }))
+  return c.json({ chapters: ids })
 })
 
 app.post('/', async (c) => {
@@ -76,7 +65,9 @@ app.post('/', async (c) => {
     createdAt: Date.now(),
   }
 
-  await putJson(kv, KEYS.chapter(chapter.storyId, chapter.id), chapter)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(body.storyId))) ?? []
+  chapters.push(chapter)
+  await putJson(kv, KEYS.chapters(body.storyId), chapters)
 
   return c.json(chapter, 201)
 })
@@ -89,13 +80,14 @@ app.patch('/:storyId/:chapterId/reorder', async (c) => {
   if (err) return c.json({ error: err }, 400)
   const { newNumber } = await c.req.json<{ newNumber: number }>()
 
-  const chapter = await getJson<Chapter>(kv, KEYS.chapter(storyId, chapterId))
-  if (!chapter) return c.json({ error: 'not found' }, 404)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const idx = chapters.findIndex(ch => ch.id === chapterId)
+  if (idx === -1) return c.json({ error: 'not found' }, 404)
 
-  chapter.number = newNumber
-  await putJson(kv, KEYS.chapter(storyId, chapterId), chapter)
+  chapters[idx].number = newNumber
+  await putJson(kv, KEYS.chapters(storyId), chapters)
 
-  return c.json(chapter)
+  return c.json(chapters[idx])
 })
 
 app.delete('/:storyId/:chapterId', async (c) => {
@@ -104,7 +96,14 @@ app.delete('/:storyId/:chapterId', async (c) => {
   let err = validateStoryId(storyId)
   if (!err) err = validateChapterId(chapterId)
   if (err) return c.json({ error: err }, 400)
-  await kv.delete(KEYS.chapter(storyId, chapterId))
+
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const idx = chapters.findIndex(ch => ch.id === chapterId)
+  if (idx === -1) return c.json({ error: 'not found' }, 404)
+
+  chapters.splice(idx, 1)
+  await putJson(kv, KEYS.chapters(storyId), chapters)
+
   return c.json({ ok: true })
 })
 

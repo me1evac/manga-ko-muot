@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-import type { Env } from '../types'
+import type { Env, Chapter } from '../types'
+import { KEYS, getJson, putJson } from '../store/kv'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -76,6 +77,47 @@ app.get('/', async (c) => {
   }
 
   return c.json({ migrated, skipped, deletedLists: listKeys.length, log })
+})
+
+app.get('/chapters-to-list', async (c) => {
+  const kv = c.env.MANGA_KV
+  const log: string[] = []
+
+  const storyKeys = await kv.list({ prefix: 'story:' })
+  const storyIds: string[] = []
+  for (const key of storyKeys.keys) {
+    const id = key.name.replace('story:', '')
+    if (id && id !== 'list') storyIds.push(id)
+  }
+  log.push(`Found ${storyIds.length} stories`)
+
+  let totalChapters = 0
+  let totalDeleted = 0
+
+  for (const sid of storyIds) {
+    const chapterKeys = await kv.list({ prefix: `chapter:${sid}:` })
+    const individualChapters: { key: string; chapter: Chapter }[] = []
+
+    for (const entry of chapterKeys.keys) {
+      const ch = await getJson<Chapter>(kv, entry.name)
+      if (ch) individualChapters.push({ key: entry.name, chapter: ch })
+    }
+
+    if (individualChapters.length === 0) continue
+
+    const chaptersList = individualChapters.map(e => e.chapter).sort((a, b) => a.number - b.number)
+    await putJson(kv, KEYS.chapters(sid), chaptersList)
+    log.push(`Created chapters:${sid} with ${chaptersList.length} chapters`)
+
+    for (const { key } of individualChapters) {
+      await kv.delete(key)
+      totalDeleted++
+    }
+    totalChapters += chaptersList.length
+    log.push(`Deleted ${individualChapters.length} individual chapter keys for ${sid}`)
+  }
+
+  return c.json({ totalStories: storyIds.length, totalChapters, totalDeleted, log })
 })
 
 export default app

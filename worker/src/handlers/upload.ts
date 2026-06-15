@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { Env, PageRecord } from '../types'
+import type { Env, PageRecord, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { sendPhoto } from '../services/telegram'
 import { validateStoryId, validateChapterId } from '../validate'
@@ -74,8 +74,9 @@ app.post('/', async (c) => {
   const story = await getJson<any>(kv, KEYS.story(storyId))
   if (!story) return c.json({ error: 'story not found' }, 404)
 
-  const chapter = await getJson<any>(kv, KEYS.chapter(storyId, chapterId))
-  if (!chapter) return c.json({ error: 'chapter not found' }, 404)
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const chapterIdx = chapters.findIndex(ch => ch.id === chapterId)
+  if (chapterIdx === -1) return c.json({ error: 'chapter not found' }, 404)
 
   const pagePrefix = `page:${storyId}:${chapterId}:`
   const existingPageKeys = await kv.list({ prefix: pagePrefix })
@@ -116,12 +117,12 @@ app.post('/', async (c) => {
     pageNum++
   }
 
-  const existingFileIds: string[] = chapter.pageFileIds ?? []
-  chapter.pageFileIds = [...existingFileIds, ...newFileIds]
-  chapter.pageCount = chapter.pageFileIds.length
-  await putJson(kv, KEYS.chapter(storyId, chapterId), chapter)
+  const existingFileIds: string[] = chapters[chapterIdx].pageFileIds ?? []
+  chapters[chapterIdx].pageFileIds = [...existingFileIds, ...newFileIds]
+  chapters[chapterIdx].pageCount = chapters[chapterIdx].pageFileIds.length
+  await putJson(kv, KEYS.chapters(storyId), chapters)
 
-  return c.json({ pages: pageRecords, totalPages: chapter.pageCount }, 201)
+  return c.json({ pages: pageRecords, totalPages: chapters[chapterIdx].pageCount }, 201)
 })
 
 export default app
