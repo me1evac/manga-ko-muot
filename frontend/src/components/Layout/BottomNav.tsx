@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
+import { HomeIcon } from '../Icons'
 
 const links = [
-  { to: '/', label: 'Home', icon: '◈' },
-  { to: '/architecture', label: 'Architecture', icon: '◇' },
+  { to: '/', label: 'Home', icon: HomeIcon },
+  { to: '/architecture', label: 'Architecture', icon: null, unicode: '◇' },
 ]
 
 export default function BottomNav() {
@@ -20,7 +21,11 @@ export default function BottomNav() {
               }`
             }
           >
-            <span className="text-lg">{link.icon}</span>
+            {link.icon ? (
+              <link.icon className="w-5 h-5" />
+            ) : (
+              <span className="text-lg">{link.unicode}</span>
+            )}
             <span>{link.label}</span>
           </NavLink>
         ))}

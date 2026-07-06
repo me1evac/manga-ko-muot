@@ -1,14 +1,24 @@
 import { useStories } from '../hooks/useManga'
+import { useSearch } from '../context/SearchContext'
 import StoryCard from '../components/Home/StoryCard'
 import { StoryCardSkeleton } from '../components/Common/Skeleton'
 
 export default function HomePage() {
   const { stories, loading, error, refetch } = useStories()
+  const { query } = useSearch()
+
+  const filtered = query.trim()
+    ? stories.filter((s) =>
+        s.title.toLowerCase().includes(query.toLowerCase().trim())
+      )
+    : stories
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">Stories</h1>
+        <h1 className="text-xl font-bold">
+          {query.trim() ? `Results for "${query}"` : 'Stories'}
+        </h1>
         <button
           onClick={() => refetch(true)}
           className="btn-ghost text-sm"
@@ -37,9 +47,13 @@ export default function HomePage() {
             Go to Architecture tab to add one
           </p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="text-zinc-500">No stories matching "{query}"</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {stories.map((story) => (
+          {filtered.map((story) => (
             <StoryCard key={story.id} story={story} />
           ))}
         </div>
