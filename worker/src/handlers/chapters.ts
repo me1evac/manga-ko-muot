@@ -52,6 +52,13 @@ app.post('/', async (c) => {
   const err = validateStoryId(body.storyId)
   if (err) return c.json({ error: err }, 400)
 
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(body.storyId))) ?? []
+  const chapterNumber = body.number
+
+  if (chapters.some(ch => ch.number === chapterNumber)) {
+    return c.json({ error: 'chapter already exists' }, 409)
+  }
+
   const counterKey = KEYS.chapterNextId(body.storyId)
   const nextNum = (parseInt((await kv.get(counterKey)) ?? '0', 10)) + 1
   await kv.put(counterKey, String(nextNum))
@@ -60,12 +67,11 @@ app.post('/', async (c) => {
     id: `ch${nextNum}`,
     storyId: body.storyId,
     title: body.title,
-    number: body.number,
+    number: chapterNumber,
     pageCount: 0,
     createdAt: Date.now(),
   }
 
-  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(body.storyId))) ?? []
   chapters.push(chapter)
   await putJson(kv, KEYS.chapters(body.storyId), chapters)
 

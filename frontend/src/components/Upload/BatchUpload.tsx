@@ -169,14 +169,32 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
     if (pending.length === 0) return
     setUploading(true)
 
-    let completed = 0
-    let exists = 0
+    const storyIds = [...new Set(pending.map(q => q.storyId))]
+
+    const existingByStory: Record<string, Set<number>> = {}
+    await Promise.all(storyIds.map(async (sid) => {
+      try {
+        const chapters = await api.chapters.list(sid)
+        existingByStory[sid] = new Set(chapters.map(ch => ch.number))
+      } catch {
+        existingByStory[sid] = new Set()
+      }
+    }))
+
     const totalBytes = pending.reduce((sum, q) => sum + q.files.reduce((s, f) => s + f.size, 0), 0)
     let fullyUploadedBytes = 0
+    let completed = 0
+    let exists = 0
 
     for (let i = 0; i < snapshot.length; i++) {
       const q = snapshot[i]
       if (q.status !== 'pending') continue
+
+      if (existingByStory[q.storyId]?.has(q.chapterNumber)) {
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'exists' } : item))
+        exists++
+        continue
+      }
 
       setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'creating' } : item))
 
@@ -186,6 +204,8 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
           title: q.title,
           number: q.chapterNumber,
         })
+
+        existingByStory[q.storyId].add(q.chapterNumber)
 
         setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading' } : item))
 
