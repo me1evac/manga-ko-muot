@@ -62,11 +62,16 @@ app.post('/', async (c) => {
   const kv = c.env.MANGA_KV
   const bucket = c.env.MANGA_BUCKET
 
-  const body: any = await c.req.parseBody({ all: true })
-  const storyId = body.storyId as string
-  const chapterId = body.chapterId as string
-  const raw = body['files']
-  const files = Array.isArray(raw) ? raw : raw ? [raw] : []
+  let formData: FormData
+  try {
+    formData = await c.req.formData()
+  } catch {
+    return c.json({ error: 'failed to parse form data' }, 400)
+  }
+
+  const storyId = formData.get('storyId') as string | null
+  const chapterId = formData.get('chapterId') as string | null
+  const files = formData.getAll('files').filter((v): v is File => v instanceof File)
 
   if (!storyId || !chapterId) {
     return c.json({ error: 'storyId and chapterId required' }, 400)
@@ -76,7 +81,7 @@ app.post('/', async (c) => {
   if (err) return c.json({ error: err }, 400)
 
   if (files.length === 0 || files.length > MAX_FILES) {
-    return c.json({ error: `upload between 1 and ${MAX_FILES} files` }, 400)
+    return c.json({ error: `upload between 1 and ${MAX_FILES} files (received ${files.length})` }, 400)
   }
 
   for (const file of files) {
