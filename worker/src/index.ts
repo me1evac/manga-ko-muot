@@ -11,7 +11,12 @@ import statsHandler from './handlers/stats'
 
 const app = new Hono<{ Bindings: Env }>()
 
-app.use('*', cors())
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['*'],
+  exposeHeaders: ['*'],
+}))
 
 app.use('/api/stories/*', async (c, next) => {
   await next()

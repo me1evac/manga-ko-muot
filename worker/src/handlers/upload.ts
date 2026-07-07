@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import type { Env, PageRecord, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId, validateChapterId } from '../validate'
@@ -27,6 +28,14 @@ async function processFile(file: File): Promise<{ buffer: ArrayBuffer; type: str
 }
 
 const app = new Hono<{ Bindings: Env }>()
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['*'],
+  exposeHeaders: ['*'],
+}))
+
+app.options('*', (c) => c.text('', 204))
 
 app.post('/cover', async (c) => {
   const body: any = await c.req.parseBody({ all: true })

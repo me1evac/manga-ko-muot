@@ -16,7 +16,7 @@ self.addEventListener('fetch', (event) => {
   }
 })
 
-async function cacheFirst(request: Request): Promise<Response> {
+async function cacheFirst(request) {
   const cached = await caches.match(request)
   if (cached) return cached
 
