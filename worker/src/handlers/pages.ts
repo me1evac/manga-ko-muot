@@ -12,18 +12,7 @@ app.get('/list/:storyId/:chapterId', async (c) => {
   if (!err) err = validateChapterId(chapterId)
   if (err) return c.json({ error: err }, 400)
 
-  const pagePrefix = `page:${storyId}:${chapterId}:`
-  const pageKeys = await kv.list({ prefix: pagePrefix })
-  const pageNums = pageKeys.keys
-    .map(k => parseInt(k.name.split(':').pop()!, 10))
-    .filter(n => !isNaN(n))
-    .sort((a, b) => a - b)
-
-  const pageResults = await Promise.all(
-    pageNums.map(num => getJson<PageRecord>(kv, KEYS.page(storyId, chapterId, num)))
-  )
-  const pages = pageResults.filter(Boolean) as PageRecord[]
-
+  const pages = (await getJson<PageRecord[]>(kv, KEYS.pages(storyId, chapterId))) ?? []
   return c.json({ pages, chapterId })
 })
 

@@ -4,7 +4,7 @@ const KEYS = {
   story: (id: string) => `story:${id}`,
   chapter: (sid: string, cid: string) => `chapter:${sid}:${cid}`,
   chapters: (sid: string) => `chapters:${sid}`,
-  page: (sid: string, cid: string, num: number) => `page:${sid}:${cid}:${num}`,
+  pages: (sid: string, cid: string) => `pages:${sid}:${cid}`,
   configPassword: 'config:password',
   chapterNextId: (sid: string) => `config:chapterNextId:${sid}`,
 }

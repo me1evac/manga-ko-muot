@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { Env, Chapter } from '../types'
+import type { Env, Chapter, PageRecord } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId, validateChapterId } from '../validate'
 
@@ -29,9 +29,8 @@ app.get('/:storyId/:chapterId', async (c) => {
   const chapter = chapters.find(ch => ch.id === chapterId)
   if (!chapter) return c.json({ error: 'not found' }, 404)
 
-  const pagePrefix = `page:${storyId}:${chapterId}:`
-  const pageKeys = await kv.list({ prefix: pagePrefix })
-  return c.json({ chapter, pageCount: pageKeys.keys.length })
+  const pages = (await getJson<PageRecord[]>(kv, KEYS.pages(storyId, chapterId))) ?? []
+  return c.json({ chapter, pageCount: pages.length })
 })
 
 app.get('/:storyId', async (c) => {
@@ -98,6 +97,7 @@ app.patch('/:storyId/:chapterId/reorder', async (c) => {
 
 app.delete('/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
+  const bucket = c.env.MANGA_BUCKET
   const { storyId, chapterId } = c.req.param()
   let err = validateStoryId(storyId)
   if (!err) err = validateChapterId(chapterId)
@@ -109,6 +109,10 @@ app.delete('/:storyId/:chapterId', async (c) => {
 
   chapters.splice(idx, 1)
   await putJson(kv, KEYS.chapters(storyId), chapters)
+
+  const pages = (await getJson<PageRecord[]>(kv, KEYS.pages(storyId, chapterId))) ?? []
+  await Promise.all(pages.map(p => bucket.delete(p.fileId).catch(() => {})))
+  await kv.delete(KEYS.pages(storyId, chapterId))
 
   return c.json({ ok: true })
 })

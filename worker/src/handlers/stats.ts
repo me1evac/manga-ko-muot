@@ -1,32 +1,36 @@
 import { Hono } from 'hono'
-import type { Env } from '../types'
-import { KEYS } from '../store/kv'
+import type { Env, PageRecord } from '../types'
+import { KEYS, getJson } from '../store/kv'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/', async (c) => {
   const kv = c.env.MANGA_KV
 
-  const [storyKeys, pageKeys] = await Promise.all([
-    kv.list({ prefix: 'story:' }),
-    kv.list({ prefix: 'page:' }),
-  ])
+  const storyKeys = await kv.list({ prefix: 'story:' })
+  const storyIds = storyKeys.keys
+    .map(k => k.name.replace('story:', ''))
+    .filter(id => id && id !== 'list')
 
   let chapterCount = 0
-  const chapterKeys = await Promise.all(
-    storyKeys.keys.map(k => kv.get(KEYS.chapters(k.name.replace('story:', ''))))
-  )
-  for (const val of chapterKeys) {
-    if (val) {
-      const chapters = JSON.parse(val)
-      chapterCount += (chapters as any[]).length
+  let pageCount = 0
+
+  await Promise.all(storyIds.map(async (sid) => {
+    const chapters = await getJson<any[]>(kv, KEYS.chapters(sid))
+    if (chapters) {
+      chapterCount += chapters.length
     }
-  }
+    const pageKeys = await kv.list({ prefix: `pages:${sid}:` })
+    await Promise.all(pageKeys.keys.map(async (k) => {
+      const pages = await getJson<PageRecord[]>(kv, k.name)
+      if (pages) pageCount += pages.length
+    }))
+  }))
 
   return c.json({
-    stories: storyKeys.keys.length,
+    stories: storyIds.length,
     chapters: chapterCount,
-    pages: pageKeys.keys.length,
+    pages: pageCount,
   })
 })
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStories } from '../hooks/useManga'
 import PasswordGate from '../components/Upload/PasswordGate'
 import StoryForm from '../components/Upload/StoryForm'
-import ChapterForm from '../components/Upload/ChapterForm'
+import UploadSection from '../components/Upload/UploadSection'
 import StoryManager from '../components/Upload/StoryManager'
 import Toast from '../components/Common/Toast'
 import { GridIcon, PlusDocIcon, StarIcon, GearIcon } from '../components/Icons'
@@ -127,7 +127,7 @@ export default function ArchitecturePage() {
         )}
 
         {tab === 'chapter' && (
-          <ChapterForm stories={stories} onSuccess={() => refetch()} />
+          <UploadSection stories={stories} onSuccess={() => refetch()} />
         )}
 
         {tab === 'settings' && (
@@ -176,8 +176,8 @@ export default function ArchitecturePage() {
                   <ul className="text-xs text-zinc-400 space-y-1.5">
                     <li> Use "New Story" to create a new manga entry with a special ID</li>
                     <li> Use "Add Chapter" to upload pages to an existing story</li>
-                    <li> Supported formats: JPG, PNG, WebP (max 70 files per upload)</li>
-                    <li> Images are stored via Telegram bot with ~3s stagger delay</li>
+                    <li> Supported formats: JPG, PNG, WebP</li>
+                    <li> Images are stored directly on R2 (Cloudflare object storage)</li>
                     <li> Stories are sorted by their special ID</li>
                   </ul>
                 </div>
