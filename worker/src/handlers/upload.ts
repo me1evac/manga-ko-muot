@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Env, PageRecord, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId, validateChapterId } from '../validate'
+import { compressToWebp } from '../utils/imageCompress'
 
 const STAGGER_MS = 3000
 const MAX_FILES = 70
@@ -11,6 +12,18 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+}
+
+async function processFile(file: File): Promise<{ buffer: ArrayBuffer; type: string; ext: 'jpg' | 'png' | 'webp' }> {
+  const buffer = await file.arrayBuffer()
+  const compressed = await compressToWebp(buffer, file.type)
+
+  if (compressed) {
+    return { buffer: compressed, type: 'image/webp', ext: 'webp' }
+  }
+
+  const ext = EXT_MAP[file.type] ?? 'jpg'
+  return { buffer, type: file.type, ext }
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -27,10 +40,10 @@ app.post('/cover', async (c) => {
     return c.json({ error: `unsupported format: ${file.type}` }, 400)
   }
 
-  const ext = EXT_MAP[file.type] ?? 'jpg'
+  const { buffer, type, ext } = await processFile(file)
   const key = `covers/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
-  await c.env.MANGA_BUCKET.put(key, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type },
+  await c.env.MANGA_BUCKET.put(key, buffer, {
+    httpMetadata: { contentType: type },
   })
 
   return c.json({ fileId: key }, 201)
@@ -89,11 +102,11 @@ app.post('/', async (c) => {
     }
 
     const file = files[i]
-    const format = EXT_MAP[file.type] ?? 'jpg'
-    const key = `pages/${storyId}/${chapterId}/${pageNum}.${format}`
+    const { buffer, type, ext } = await processFile(file)
+    const key = `pages/${storyId}/${chapterId}/${pageNum}.${ext}`
 
-    await bucket.put(key, await file.arrayBuffer(), {
-      httpMetadata: { contentType: file.type },
+    await bucket.put(key, buffer, {
+      httpMetadata: { contentType: type },
     })
 
     const page: PageRecord = {
@@ -102,7 +115,7 @@ app.post('/', async (c) => {
       storyId,
       fileId: key,
       pageNumber: pageNum,
-      format,
+      format: ext,
       fileSize: file.size,
     }
 
