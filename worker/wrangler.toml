@@ -10,4 +10,7 @@ kv_namespaces = [
 binding = "MANGA_BUCKET"
 bucket_name = "mmangakomuotdb"
 
+[vars]
+R2_PUBLIC_URL = "https://pub-c14ae60fabae4996b47d61686f42f463.r2.dev"
+
 # Secrets set via `wrangler secret put`

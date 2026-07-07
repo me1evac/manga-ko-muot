@@ -31,6 +31,7 @@ export interface PageRecord {
 export interface Env {
   MANGA_KV: KVNamespace
   MANGA_BUCKET: R2Bucket
+  R2_PUBLIC_URL: string
   TELEGRAM_BOT_TOKEN: string
   TELEGRAM_CHAT_ID: string
   ADMIN_PASSWORD: string

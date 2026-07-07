@@ -29,19 +29,14 @@ app.get('/list/:storyId/:chapterId', async (c) => {
 
 app.get('/*', async (c) => {
   const key = c.req.path.replace(/^.*\/images\//, '')
-  const object = await c.env.MANGA_BUCKET.get(key)
+  const publicUrl = `${c.env.R2_PUBLIC_URL}/${key}`
 
-  if (!object) {
-    return c.json({ error: 'not found' }, 404)
-  }
-
-  const headers = new Headers()
-  object.writeHttpMetadata(headers)
-  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
-  headers.set('ETag', object.httpEtag)
-
-  return new Response(object.body, {
-    headers,
+  return new Response(null, {
+    status: 302,
+    headers: {
+      'Location': publicUrl,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
   })
 })
 
