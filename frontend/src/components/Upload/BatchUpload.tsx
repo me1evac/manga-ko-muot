@@ -171,8 +171,8 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
 
     let completed = 0
     let exists = 0
-    const totalChunks = pending.reduce((sum, q) => sum + Math.ceil(q.files.length / MAX_FILES), 0)
-    let chunksDone = 0
+    const totalBytes = pending.reduce((sum, q) => sum + q.files.reduce((s, f) => s + f.size, 0), 0)
+    let fullyUploadedBytes = 0
 
     for (let i = 0; i < snapshot.length; i++) {
       const q = snapshot[i]
@@ -191,9 +191,12 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
 
         for (let c = 0; c < q.files.length; c += MAX_FILES) {
           const chunk = q.files.slice(c, c + MAX_FILES)
-          await api.upload.pages(q.storyId, chapter.id, chunk)
-          chunksDone++
-          setProgress(Math.round((chunksDone / totalChunks) * 100))
+          const chunkBytes = chunk.reduce((s, f) => s + f.size, 0)
+          await api.upload.pages(q.storyId, chapter.id, chunk, (done) => {
+            const pct = Math.min(((fullyUploadedBytes + done) / totalBytes) * 100, 99)
+            setProgress(Math.round(pct))
+          })
+          fullyUploadedBytes += chunkBytes
         }
 
         setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'done' } : item))
@@ -212,7 +215,6 @@ export default function BatchUpload({ stories, onSuccess }: BatchUploadProps) {
     setProgress(100)
     onSuccess()
 
-    // Auto-remove completed items from the visible queue after a brief pause
     setTimeout(() => {
       setQueue(prev => prev.filter(q => q.status !== 'done' && q.status !== 'exists'))
     }, 2000)

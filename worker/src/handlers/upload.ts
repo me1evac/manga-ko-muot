@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, PageRecord, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
-import { sendPhoto } from '../services/telegram'
 import { validateStoryId, validateChapterId } from '../validate'
 
 const STAGGER_MS = 3000
@@ -17,13 +16,6 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
 const app = new Hono<{ Bindings: Env }>()
 
 app.post('/cover', async (c) => {
-  const botToken = c.env.TELEGRAM_BOT_TOKEN
-  const chatId = c.env.TELEGRAM_CHAT_ID
-
-  if (!chatId) {
-    return c.json({ error: 'TELEGRAM_CHAT_ID not configured' }, 500)
-  }
-
   const body: any = await c.req.parseBody({ all: true })
   const file = body['file']
 
@@ -35,18 +27,18 @@ app.post('/cover', async (c) => {
     return c.json({ error: `unsupported format: ${file.type}` }, 400)
   }
 
-  const fileId = await sendPhoto(botToken, chatId, file)
-  return c.json({ fileId }, 201)
+  const ext = EXT_MAP[file.type] ?? 'jpg'
+  const key = `covers/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  await c.env.MANGA_BUCKET.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  })
+
+  return c.json({ fileId: key }, 201)
 })
 
 app.post('/', async (c) => {
   const kv = c.env.MANGA_KV
-  const botToken = c.env.TELEGRAM_BOT_TOKEN
-  const chatId = c.env.TELEGRAM_CHAT_ID
-
-  if (!chatId) {
-    return c.json({ error: 'TELEGRAM_CHAT_ID not configured' }, 500)
-  }
+  const bucket = c.env.MANGA_BUCKET
 
   const body: any = await c.req.parseBody({ all: true })
   const storyId = body.storyId as string
@@ -98,14 +90,17 @@ app.post('/', async (c) => {
 
     const file = files[i]
     const format = EXT_MAP[file.type] ?? 'jpg'
+    const key = `pages/${storyId}/${chapterId}/${pageNum}.${format}`
 
-    const fileId = await sendPhoto(botToken, chatId, file)
+    await bucket.put(key, await file.arrayBuffer(), {
+      httpMetadata: { contentType: file.type },
+    })
 
     const page: PageRecord = {
       id: `p${chapterId}_${pageNum}`,
       chapterId,
       storyId,
-      fileId,
+      fileId: key,
       pageNumber: pageNum,
       format,
       fileSize: file.size,
@@ -113,7 +108,7 @@ app.post('/', async (c) => {
 
     await putJson(kv, KEYS.page(storyId, chapterId, pageNum), page)
     pageRecords.push(page)
-    newFileIds.push(fileId)
+    newFileIds.push(key)
     pageNum++
   }
 

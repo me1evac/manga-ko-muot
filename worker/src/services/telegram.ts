@@ -1,3 +1,8 @@
+// Telegram service is no longer used for image storage.
+// Images are now uploaded to and served from Cloudflare R2.
+// This file is kept as a placeholder for future Telegram features
+// (e.g., notifications, announcements).
+
 export async function sendPhoto(
   botToken: string,
   chatId: string,

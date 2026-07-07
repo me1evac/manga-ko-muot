@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, PageRecord } from '../types'
 import { KEYS, getJson } from '../store/kv'
-import { getFileInfo, getFileUrl } from '../services/telegram'
 import { validateStoryId, validateChapterId } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -28,32 +27,22 @@ app.get('/list/:storyId/:chapterId', async (c) => {
   return c.json({ pages, chapterId })
 })
 
-app.get('/:fileId', async (c) => {
-  const kv = c.env.MANGA_KV
-  const { fileId } = c.req.param()
-  const botToken = c.env.TELEGRAM_BOT_TOKEN
+app.get('/*', async (c) => {
+  const key = c.req.path.replace(/^.*\/images\//, '')
+  const object = await c.env.MANGA_BUCKET.get(key)
 
-  const cacheKey = `image:${fileId}`
-  const cached = await kv.get(cacheKey, { type: 'text' })
-  if (cached) {
-    const { url } = JSON.parse(cached)
-    return c.redirect(url, 302)
+  if (!object) {
+    return c.json({ error: 'not found' }, 404)
   }
 
-  try {
-    const { filePath } = await getFileInfo(botToken, fileId)
-    const url = getFileUrl(botToken, filePath)
+  const headers = new Headers()
+  object.writeHttpMetadata(headers)
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  headers.set('ETag', object.httpEtag)
 
-    await kv.put(
-      cacheKey,
-      JSON.stringify({ url, contentType: 'image/jpeg' }),
-      { expirationTtl: 86400 }
-    )
-
-    return c.redirect(url, 302)
-  } catch (e: any) {
-    return c.json({ error: e.message }, 502)
-  }
+  return new Response(object.body, {
+    headers,
+  })
 })
 
 export default app

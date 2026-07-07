@@ -6,4 +6,8 @@ kv_namespaces = [
   { binding = "MANGA_KV", id = "1851457f14c044b49dd8999b52c668b9" }
 ]
 
+[[r2_buckets]]
+binding = "MANGA_BUCKET"
+bucket_name = "mmangakomuotdb"
+
 # Secrets set via `wrangler secret put`
