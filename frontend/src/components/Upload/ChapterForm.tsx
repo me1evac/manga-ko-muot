@@ -5,7 +5,7 @@ import Toast from '../Common/Toast'
 import BatchUpload from './BatchUpload'
 import type { Story, Chapter } from '../../types'
 
-const MAX_FILES = 70
+const MAX_FILES = 1
 const ALLOWED_TYPES: Record<string, string[]> = {
   'image/jpeg': ['.jpg', '.jpeg'],
   'image/png': ['.png'],
@@ -81,16 +81,26 @@ export default function ChapterForm({ stories, onSuccess }: ChapterFormProps) {
     if (!createdChapter || files.length === 0) return
     setUploading(true)
     try {
-      const result = await api.upload.pages(
-        storyId,
-        createdChapter.id,
-        files,
-        (loaded, total) => {
-          setProgress(Math.round((loaded / total) * 100))
-        }
-      )
+      const totalBytes = files.reduce((s, f) => s + f.size, 0)
+      let uploadedBytes = 0
+      let totalPages = 0
+      for (let i = 0; i < files.length; i += MAX_FILES) {
+        const chunk = files.slice(i, i + MAX_FILES)
+        const chunkBytes = chunk.reduce((s, f) => s + f.size, 0)
+        const result = await api.upload.pages(
+          storyId,
+          createdChapter.id,
+          chunk,
+          (done) => {
+            const pct = Math.min(((uploadedBytes + done) / totalBytes) * 100, 99)
+            setProgress(Math.round(pct))
+          }
+        )
+        uploadedBytes += chunkBytes
+        totalPages += result.pages.length
+      }
       filePreviews.forEach(u => URL.revokeObjectURL(u))
-      setToast(`Uploaded ${result.pages.length} pages`)
+      setToast(`Uploaded ${totalPages} pages`)
       setFiles([])
       setFilePreviews([])
       setCreatedChapter(null)

@@ -5,7 +5,7 @@ import type { Story } from '../../types'
 import { loadQueue, saveQueue } from '../../utils/queueStorage'
 import type { StoredQueueItem } from '../../utils/queueStorage'
 
-const MAX_FILES = 70
+const MAX_FILES = 1
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 interface QueueItem {
