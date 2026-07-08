@@ -29,9 +29,8 @@ app.get('/', async (c) => {
 
   for (const sid of storyIds) {
     await kv.put(KEYS.chapters(sid), '[]')
-    await kv.put(KEYS.chapterNextId(sid), '0')
   }
-  log.push(`Reset ${storyIds.length} stories (chapters cleared, counters reset)`)
+  log.push(`Reset ${storyIds.length} stories (chapters cleared)`)
 
   return c.json({
     cleaned: true,

@@ -6,7 +6,6 @@ const KEYS = {
   chapters: (sid: string) => `chapters:${sid}`,
   pages: (sid: string, cid: string) => `pages:${sid}:${cid}`,
   configPassword: 'config:password',
-  chapterNextId: (sid: string) => `config:chapterNextId:${sid}`,
 }
 
 async function getJson<T>(kv: KVNamespace, key: string): Promise<T | null> {

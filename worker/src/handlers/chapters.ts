@@ -58,12 +58,14 @@ app.post('/', async (c) => {
     return c.json({ error: 'chapter already exists' }, 409)
   }
 
-  const counterKey = KEYS.chapterNextId(body.storyId)
-  const nextNum = (parseInt((await kv.get(counterKey)) ?? '0', 10)) + 1
-  await kv.put(counterKey, String(nextNum))
+  const existingIds = new Set(chapters.map(ch => ch.id))
+  let chapterId = `ch${chapterNumber}`
+  if (existingIds.has(chapterId)) {
+    chapterId = `ch${chapterNumber}_${Math.random().toString(36).slice(2, 8)}`
+  }
 
   const chapter: Chapter = {
-    id: `ch${nextNum}`,
+    id: chapterId,
     storyId: body.storyId,
     title: body.title,
     number: chapterNumber,

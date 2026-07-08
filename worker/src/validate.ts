@@ -1,5 +1,5 @@
 const STORY_ID_RE = /^[A-Z]\w{2,}$/
-const CHAPTER_ID_RE = /^ch\d+$/i
+const CHAPTER_ID_RE = /^ch\d+(_[a-z0-9]+)?$/i
 
 function validateStoryId(id: string): string | null {
   if (!id) return 'storyId is required'
