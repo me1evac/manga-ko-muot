@@ -153,6 +153,15 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
   const handleManualUpload = async () => {
     if (!storyId || !title.trim() || !number || files.length === 0) return
 
+    try {
+      const existing = await api.chapters.list(storyId)
+      if (existing.some(ch => ch.number === parseInt(number, 10))) {
+        setToast(`Chapter ${number} already exists — delete it first or use a different number`)
+        return
+      }
+    } catch {
+    }
+
     setUploading(true)
     startTimeRef.current = Date.now()
     try {
