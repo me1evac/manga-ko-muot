@@ -1,6 +1,7 @@
 import type { Story, Chapter, StoryWithChapters, ChapterIdInfo, PageRecord } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
+const R2_BASE = import.meta.env.VITE_R2_PUBLIC_URL ?? BASE
 
 const cache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_TTL = 60_000
@@ -207,5 +208,5 @@ export const api = {
       ),
   },
 
-  imageUrl: (fileId: string) => `${BASE}/images/${fileId}`,
+  imageUrl: (fileId: string) => `${R2_BASE}/${fileId}`,
 }
