@@ -48,7 +48,7 @@ async function getWebpEncoder(): Promise<WebPModule> {
 
 const MAX_COMPRESS_SIZE = 10 * 1024 * 1024
 
-const WEBP_DEFAULTS: EncodeOptions = {
+const WEBP_BASE_OPTIONS: EncodeOptions = {
   quality: 80,
   target_size: 0,
   target_PSNR: 0,
@@ -78,26 +78,37 @@ const WEBP_DEFAULTS: EncodeOptions = {
   use_sharp_yuv: 0,
 }
 
+export async function decodeToImageData(
+  buffer: ArrayBuffer,
+  mimeType: string,
+): Promise<ImageData | null> {
+  if (buffer.byteLength > MAX_COMPRESS_SIZE) return null
+  if (mimeType === 'image/webp') return null
+
+  if (mimeType === 'image/jpeg') {
+    const decoder = await getJpegDecoder()
+    return decoder.decode(buffer, false)
+  }
+
+  return null
+}
+
+export async function encodeImageDataToWebp(
+  imageData: ImageData,
+  quality: number,
+): Promise<ArrayBuffer | null> {
+  const encoder = await getWebpEncoder()
+  const options: EncodeOptions = { ...WEBP_BASE_OPTIONS, quality }
+  const result = encoder.encode(imageData.data, imageData.width, imageData.height, options)
+  if (!result) return null
+  return result.buffer.slice(0, result.byteLength) as ArrayBuffer
+}
+
 export async function compressToWebp(
   buffer: ArrayBuffer,
   mimeType: string,
 ): Promise<ArrayBuffer | null> {
-  if (mimeType === 'image/webp') return null
-  if (buffer.byteLength > MAX_COMPRESS_SIZE) return null
-
-  let imageData: ImageData | null = null
-
-  if (mimeType === 'image/jpeg') {
-    const decoder = await getJpegDecoder()
-    imageData = decoder.decode(buffer, false)
-  }
-  // PNG decode not implemented yet—fall through to return null
-
+  const imageData = await decodeToImageData(buffer, mimeType)
   if (!imageData) return null
-
-  const encoder = await getWebpEncoder()
-  const result = encoder.encode(imageData.data, imageData.width, imageData.height, WEBP_DEFAULTS)
-  if (!result) return null
-
-  return result.buffer.slice(0, result.byteLength) as ArrayBuffer
+  return encodeImageDataToWebp(imageData, 80)
 }

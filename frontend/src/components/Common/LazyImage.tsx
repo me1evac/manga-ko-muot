@@ -5,11 +5,14 @@ interface LazyImageProps {
   alt: string
   className?: string
   onLoad?: () => void
+  thumbnailSrc?: string | null
 }
 
-export default function LazyImage({ src, alt, className = '', onLoad }: LazyImageProps) {
+export default function LazyImage({ src, alt, className = '', onLoad, thumbnailSrc }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false)
   const [inView, setInView] = useState(false)
+  const [displaySrc, setDisplaySrc] = useState<string | null>(null)
+  const preloaderRef = useRef<HTMLImageElement | null>(null)
   const imgRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -32,14 +35,33 @@ export default function LazyImage({ src, alt, className = '', onLoad }: LazyImag
 
   useEffect(() => {
     setLoaded(false)
+    setDisplaySrc(null)
+    if (preloaderRef.current) {
+      preloaderRef.current.onload = null
+      preloaderRef.current = null
+    }
   }, [src])
+
+  useEffect(() => {
+    if (!inView || displaySrc) return
+    setDisplaySrc(thumbnailSrc ?? src)
+  }, [inView, thumbnailSrc, src, displaySrc])
+
+  useEffect(() => {
+    if (!loaded || !thumbnailSrc || displaySrc === src) return
+
+    const img = new Image()
+    preloaderRef.current = img
+    img.onload = () => setDisplaySrc(src)
+    img.src = src
+  }, [loaded, thumbnailSrc, displaySrc, src])
 
   return (
     <div ref={imgRef} className={`relative overflow-hidden ${className}`}>
-      <div className="absolute inset-0 bg-zinc-800 animate-pulse" />
-      {inView && (
+      <div className={`absolute inset-0 bg-zinc-800 ${loaded ? 'opacity-0' : 'animate-pulse'}`} />
+      {inView && displaySrc && (
         <img
-          src={src}
+          src={displaySrc}
           alt={alt}
           className={`relative w-full h-full object-contain transition-opacity duration-300 ${
             loaded ? 'opacity-100' : 'opacity-0'

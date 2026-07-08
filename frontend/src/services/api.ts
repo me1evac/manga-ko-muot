@@ -209,4 +209,5 @@ export const api = {
   },
 
   imageUrl: (fileId: string) => `${R2_BASE}/${fileId}`,
+  thumbnailUrl: (page: PageRecord) => page.thumbnailId ? `${R2_BASE}/${page.thumbnailId}` : null,
 }

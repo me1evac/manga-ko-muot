@@ -59,6 +59,22 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
   const previewUrlsRef = useRef<string[]>([])
   const folderItemsRef = useRef(folderItems)
   folderItemsRef.current = folderItems
+  const startTimeRef = useRef(0)
+  const [eta, setEta] = useState('')
+
+  useEffect(() => {
+    if (!uploading || progress === 0) return
+    const id = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current
+      if (elapsed <= 0) return
+      const total = (elapsed / progress) * 100
+      const remaining = total - elapsed
+      if (remaining < 1000) setEta('Almost done')
+      else if (remaining < 60000) setEta(`~${Math.ceil(remaining / 1000)}s remaining`)
+      else setEta(`~${Math.floor(remaining / 60000)}m ${Math.ceil((remaining % 60000) / 1000)}s remaining`)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [uploading, progress])
 
   useEffect(() => {
     const el = inputRef.current
@@ -73,6 +89,16 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
       previewUrlsRef.current = []
     }
   }, [])
+
+  useEffect(() => {
+    if (!uploading) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [uploading])
 
   const removePreview = (idx: number) => {
     URL.revokeObjectURL(previews[idx])
@@ -128,6 +154,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     if (!storyId || !title.trim() || !number || files.length === 0) return
 
     setUploading(true)
+    startTimeRef.current = Date.now()
     try {
       const chapter = await api.chapters.create({
         storyId,
@@ -155,6 +182,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
       setTitle('')
       setNumber('1')
       setProgress(0)
+      setEta('')
       onSuccess()
     } catch (err: any) {
       setToast(err.message)
@@ -168,6 +196,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     if (pending.length === 0) return
 
     setUploading(true)
+    startTimeRef.current = Date.now()
 
     const storyIds = [...new Set([storyId])]
 
@@ -231,6 +260,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
 
     setUploading(false)
     setProgress(100)
+    setEta('')
     onSuccess()
 
     setTimeout(() => {
@@ -396,6 +426,22 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
               {uploading ? 'Uploading...' : `Upload ${pendingCount} chapter(s)`}
             </button>
           )}
+        </div>
+      )}
+
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-900/30 border border-amber-800/50 rounded-lg px-3 py-2">
+            <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            <span>Upload in progress — don't switch tabs or navigate away</span>
+          </div>
+          <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="flex justify-between text-xs text-zinc-500">
+            <span>Uploading... {progress}%</span>
+            {eta && <span>{eta}</span>}
+          </div>
         </div>
       )}
     </div>

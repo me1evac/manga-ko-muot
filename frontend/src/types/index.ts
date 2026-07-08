@@ -23,6 +23,7 @@ export interface PageRecord {
   chapterId: string
   storyId: string
   fileId: string
+  thumbnailId?: string
   pageNumber: number
   format: 'jpg' | 'png' | 'webp'
   fileSize: number

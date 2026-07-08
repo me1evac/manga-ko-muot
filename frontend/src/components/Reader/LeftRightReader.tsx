@@ -6,6 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '../Icons'
 
 interface LeftRightReaderProps {
   fileIds: string[]
+  thumbFileIds: (string | null)[]
   storyId: string
   chapterNumber?: number
   prevChapterId?: string | null
@@ -18,6 +19,7 @@ interface LeftRightReaderProps {
 
 export default function LeftRightReader({
   fileIds,
+  thumbFileIds,
   storyId,
   chapterNumber,
   prevChapterId,
@@ -80,6 +82,7 @@ export default function LeftRightReader({
   if (fileIds.length === 0) return null
 
   const fileId = fileIds[currentPage - 1]
+  const thumbId = thumbFileIds[currentPage - 1]
 
   return (
     <div
@@ -129,6 +132,7 @@ export default function LeftRightReader({
       <div className="h-full flex items-center justify-center">
         <LazyImage
           src={api.imageUrl(fileId)}
+          thumbnailSrc={thumbId ? api.imageUrl(thumbId) : null}
           alt={`Page ${currentPage}`}
           className="max-h-full max-w-full animate-in"
         />

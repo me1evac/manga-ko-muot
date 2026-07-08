@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { Env, PageRecord, Chapter } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId, validateChapterId } from '../validate'
-import { compressToWebp } from '../utils/imageCompress'
+import { decodeToImageData, encodeImageDataToWebp } from '../utils/imageCompress'
 
 const MAX_FILES = 100
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -13,17 +13,31 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
   'image/webp': 'webp',
 }
 
-async function processFile(file: File): Promise<{ buffer: ArrayBuffer; type: string; ext: 'jpg' | 'png' | 'webp' }> {
+async function processFile(file: File): Promise<{
+  hq: { buffer: ArrayBuffer; type: string; ext: 'jpg' | 'png' | 'webp' }
+  lq: ArrayBuffer | null
+}> {
   const buffer = await file.arrayBuffer()
   const ext = EXT_MAP[file.type] ?? 'jpg'
-  try {
-    const compressed = await compressToWebp(buffer, file.type)
-    if (compressed) {
-      return { buffer: compressed, type: 'image/webp', ext: 'webp' }
+
+  const imageData = await decodeToImageData(buffer, file.type)
+  if (imageData) {
+    const [hqBuf, lqBuf] = await Promise.all([
+      encodeImageDataToWebp(imageData, 80),
+      encodeImageDataToWebp(imageData, 15),
+    ])
+    if (hqBuf) {
+      return {
+        hq: { buffer: hqBuf, type: 'image/webp', ext: 'webp' },
+        lq: lqBuf,
+      }
     }
-  } catch {
   }
-  return { buffer, type: file.type, ext }
+
+  return {
+    hq: { buffer, type: file.type, ext },
+    lq: null,
+  }
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -37,7 +51,7 @@ app.post('/cover', async (c) => {
   if (!ALLOWED_TYPES.includes(file.type)) {
     return c.json({ error: `unsupported format: ${file.type}` }, 400)
   }
-  const { buffer, type, ext } = await processFile(file)
+  const { hq: { buffer, type, ext }, lq: _lq } = await processFile(file)
   const key = `covers/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
   await c.env.MANGA_BUCKET.put(key, buffer, {
     httpMetadata: { contentType: type },
@@ -91,21 +105,29 @@ app.post('/', async (c) => {
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
-    const { buffer, type, ext } = await processFile(file)
+    const { hq, lq } = await processFile(file)
     const pageNum = nextPageNum++
-    const key = `pages/${storyId}/${chapterId}/${pageNum}.${ext}`
+    const hqKey = `pages/${storyId}/${chapterId}/${pageNum}.${hq.ext}`
+    const lqKey = `pages/${storyId}/${chapterId}/${pageNum}_lq.${hq.ext}`
 
-    await bucket.put(key, buffer, {
-      httpMetadata: { contentType: type },
+    await bucket.put(hqKey, hq.buffer, {
+      httpMetadata: { contentType: hq.type },
     })
+
+    if (lq) {
+      await bucket.put(lqKey, lq, {
+        httpMetadata: { contentType: 'image/webp' },
+      })
+    }
 
     newPages.push({
       id: `p${chapterId}_${pageNum}`,
       chapterId,
       storyId,
-      fileId: key,
+      fileId: hqKey,
+      thumbnailId: lq ? lqKey : undefined,
       pageNumber: pageNum,
-      format: ext,
+      format: hq.ext,
       fileSize: file.size,
     })
   }

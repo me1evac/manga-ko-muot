@@ -111,7 +111,11 @@ app.delete('/:storyId/:chapterId', async (c) => {
   await putJson(kv, KEYS.chapters(storyId), chapters)
 
   const pages = (await getJson<PageRecord[]>(kv, KEYS.pages(storyId, chapterId))) ?? []
-  await Promise.all(pages.map(p => bucket.delete(p.fileId).catch(() => {})))
+  await Promise.all(pages.flatMap(p => {
+    const keys = [bucket.delete(p.fileId).catch(() => {})]
+    if (p.thumbnailId) keys.push(bucket.delete(p.thumbnailId).catch(() => {}))
+    return keys
+  }))
   await kv.delete(KEYS.pages(storyId, chapterId))
 
   return c.json({ ok: true })

@@ -6,6 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '../Icons'
 
 interface ScrollReaderProps {
   fileIds: string[]
+  thumbFileIds: (string | null)[]
   storyId: string
   chapterId: string
   chapterNumber?: number
@@ -17,7 +18,7 @@ interface ScrollReaderProps {
   onToggleMode: () => void
 }
 
-export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumber, prevChapterId, nextChapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
+export default function ScrollReader({ fileIds, thumbFileIds, storyId, chapterId, chapterNumber, prevChapterId, nextChapterId, currentPage, totalPages, onPageChange, onToggleMode }: ScrollReaderProps) {
   const pageRefs = useRef<(HTMLDivElement | null)[]>([])
   const hasRestored = useRef(false)
 
@@ -74,6 +75,7 @@ export default function ScrollReader({ fileIds, storyId, chapterId, chapterNumbe
           <div key={fileId} ref={(el) => { pageRefs.current[i] = el }} className="w-full">
             <LazyImage
               src={api.imageUrl(fileId)}
+              thumbnailSrc={thumbFileIds[i] ? api.imageUrl(thumbFileIds[i]) : null}
               alt={`Page ${i + 1}`}
               className="w-full min-h-[50vh]"
             />

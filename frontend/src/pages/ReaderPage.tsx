@@ -13,6 +13,7 @@ export default function ReaderPage() {
   const { storyId, chapterId } = useParams<{ storyId: string; chapterId: string }>()
   const { mode, toggleMode, currentPage, setCurrentPage, totalPages, setTotalPages } = useReader()
   const [pageFileIds, setPageFileIds] = useState<string[]>([])
+  const [thumbFileIds, setThumbFileIds] = useState<(string | null)[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { chapterIds } = useChapterIds(storyId)
@@ -31,7 +32,9 @@ export default function ReaderPage() {
       .then((data) => {
         const sorted = data.pages.sort((a, b) => a.pageNumber - b.pageNumber)
         const ids = sorted.map((p) => p.fileId)
+        const thumbs = sorted.map((p) => p.thumbnailId ?? null)
         setPageFileIds(ids)
+        setThumbFileIds(thumbs)
         setTotalPages(ids.length)
         setCurrentPage(1)
       })
@@ -107,6 +110,7 @@ export default function ReaderPage() {
     return (
       <ScrollReader
         fileIds={pageFileIds}
+        thumbFileIds={thumbFileIds}
         storyId={storyId!}
         chapterId={chapterId!}
         chapterNumber={chapterNumber}
@@ -123,6 +127,7 @@ export default function ReaderPage() {
   return (
     <LeftRightReader
       fileIds={pageFileIds}
+      thumbFileIds={thumbFileIds}
       storyId={storyId!}
       chapterNumber={chapterNumber}
       prevChapterId={prevChapterId}
