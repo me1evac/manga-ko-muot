@@ -26,7 +26,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
 
   return (
     <div
-      className={`fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg border text-sm backdrop-blur-lg transition-all duration-300 ${
+      className={`fixed bottom-24 md:bottom-6 right-4 z-50 px-4 py-2.5 rounded-lg border text-sm backdrop-blur-lg transition-all duration-300 max-w-xs ${
         colors[type]
       } ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
     >

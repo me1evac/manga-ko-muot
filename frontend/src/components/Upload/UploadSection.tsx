@@ -325,8 +325,9 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
           <button
             onClick={handleManualUpload}
             disabled={uploading || files.length === 0 || !storyId || !title.trim()}
-            className="btn-primary w-full"
+            className="btn-primary w-full inline-flex items-center justify-center gap-2"
           >
+            {uploading && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
             {uploading ? 'Uploading...' : `Upload ${files.length} page(s)`}
           </button>
         </div>
@@ -389,8 +390,9 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
             <button
               onClick={handleFolderUpload}
               disabled={uploading || pendingCount === 0}
-              className="btn-primary w-full"
+              className="btn-primary w-full inline-flex items-center justify-center gap-2"
             >
+              {uploading && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
               {uploading ? 'Uploading...' : `Upload ${pendingCount} chapter(s)`}
             </button>
           )}
