@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://manga-khong-muot.dragonwind22052008.workers.dev/api/:path*" },
+    { "source": "/favicon.ico", "destination": "/favicon.svg" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
