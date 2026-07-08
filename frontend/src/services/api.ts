@@ -46,7 +46,13 @@ function clearCache(pattern?: string) {
   }
 }
 
-export { clearCache }
+function notifyMutation() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('api:mutation'))
+  }
+}
+
+export { clearCache, notifyMutation }
 
 export const api = {
   stories: {
@@ -61,23 +67,36 @@ export const api = {
       }
       return request<StoryWithChapters>(path)
     },
-    create: (data: Partial<Story>) =>
-      request<Story>('/stories', {
+    create: async (data: Partial<Story>) => {
+      clearCache('/stories')
+      notifyMutation()
+      return request<Story>('/stories', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
-    update: (id: string, data: Partial<Story>) =>
-      request<Story>(`/stories/${id}`, {
+      })
+    },
+    update: async (id: string, data: Partial<Story>) => {
+      clearCache('/stories')
+      notifyMutation()
+      return request<Story>(`/stories/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
-      }),
-    delete: (id: string) =>
-      request<{ ok: boolean }>(`/stories/${id}`, { method: 'DELETE' }),
-    reorder: (id: string, newOrder: string[]) =>
-      request<{ ok: boolean }>(`/stories/${id}/reorder`, {
+      })
+    },
+    delete: async (id: string) => {
+      clearCache('/stories')
+      notifyMutation()
+      return request<{ ok: boolean }>(`/stories/${id}`, { method: 'DELETE' })
+    },
+    reorder: async (id: string, newOrder: string[]) => {
+      clearCache('/stories')
+      clearCache('/chapters')
+      notifyMutation()
+      return request<{ ok: boolean }>(`/stories/${id}/reorder`, {
         method: 'PATCH',
         body: JSON.stringify({ order: newOrder }),
-      }),
+      })
+    },
   },
 
   chapters: {
@@ -88,20 +107,32 @@ export const api = {
       request<{ chapter: Chapter; pageCount: number }>(
         `/chapters/${storyId}/${chapterId}`
       ),
-    create: (data: Partial<Chapter>) =>
-      request<Chapter>('/chapters', {
+    create: async (data: Partial<Chapter>) => {
+      clearCache('/stories')
+      clearCache('/chapters')
+      notifyMutation()
+      return request<Chapter>('/chapters', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
-    reorder: (storyId: string, chapterId: string, newNumber: number) =>
-      request<Chapter>(`/chapters/${storyId}/${chapterId}/reorder`, {
+      })
+    },
+    reorder: async (storyId: string, chapterId: string, newNumber: number) => {
+      clearCache('/chapters')
+      clearCache('/stories')
+      notifyMutation()
+      return request<Chapter>(`/chapters/${storyId}/${chapterId}/reorder`, {
         method: 'PATCH',
         body: JSON.stringify({ newNumber }),
-      }),
-    delete: (storyId: string, chapterId: string) =>
-      request<{ ok: boolean }>(`/chapters/${storyId}/${chapterId}`, {
+      })
+    },
+    delete: async (storyId: string, chapterId: string) => {
+      clearCache('/chapters')
+      clearCache('/stories')
+      notifyMutation()
+      return request<{ ok: boolean }>(`/chapters/${storyId}/${chapterId}`, {
         method: 'DELETE',
-      }),
+      })
+    },
   },
 
   upload: {
@@ -113,6 +144,8 @@ export const api = {
         const err = await res.json().catch(() => ({ error: 'upload failed' }))
         throw new Error(err.error)
       }
+      clearCache('/stories')
+      notifyMutation()
       return res.json()
     },
 
@@ -136,6 +169,10 @@ export const api = {
         }
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
+            clearCache('/stories')
+            clearCache('/chapters')
+            clearCache('/pages')
+            notifyMutation()
             resolve(JSON.parse(xhr.responseText))
           } else {
             try {

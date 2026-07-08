@@ -15,11 +15,14 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
 
 async function processFile(file: File): Promise<{ buffer: ArrayBuffer; type: string; ext: 'jpg' | 'png' | 'webp' }> {
   const buffer = await file.arrayBuffer()
-  const compressed = await compressToWebp(buffer, file.type)
-  if (compressed) {
-    return { buffer: compressed, type: 'image/webp', ext: 'webp' }
-  }
   const ext = EXT_MAP[file.type] ?? 'jpg'
+  try {
+    const compressed = await compressToWebp(buffer, file.type)
+    if (compressed) {
+      return { buffer: compressed, type: 'image/webp', ext: 'webp' }
+    }
+  } catch {
+  }
   return { buffer, type: file.type, ext }
 }
 

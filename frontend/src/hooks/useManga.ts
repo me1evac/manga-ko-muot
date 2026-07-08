@@ -23,6 +23,12 @@ export function useStories() {
 
   useEffect(() => { fetch() }, [fetch])
 
+  useEffect(() => {
+    const handler = () => fetch(true)
+    window.addEventListener('api:mutation', handler)
+    return () => window.removeEventListener('api:mutation', handler)
+  }, [fetch])
+
   return { stories, loading, error, refetch: fetch }
 }
 
@@ -47,6 +53,12 @@ export function useStory(id: string | undefined, params?: { offset?: number; lim
 
   useEffect(() => { fetch() }, [fetch])
 
+  useEffect(() => {
+    const handler = () => { clearCache('/stories'); fetch() }
+    window.addEventListener('api:mutation', handler)
+    return () => window.removeEventListener('api:mutation', handler)
+  }, [fetch])
+
   return { data, loading, error, refetch: fetch }
 }
 
@@ -68,6 +80,12 @@ export function useChapterIds(storyId: string | undefined) {
   }, [storyId])
 
   useEffect(() => { fetch() }, [fetch])
+
+  useEffect(() => {
+    const handler = () => { clearCache('/chapters'); fetch() }
+    window.addEventListener('api:mutation', handler)
+    return () => window.removeEventListener('api:mutation', handler)
+  }, [fetch])
 
   return { chapterIds, loading, refetch: fetch }
 }
@@ -92,6 +110,12 @@ export function useChapters(storyId: string | undefined) {
   }, [storyId])
 
   useEffect(() => { fetch() }, [fetch])
+
+  useEffect(() => {
+    const handler = () => { clearCache('/chapters'); fetch() }
+    window.addEventListener('api:mutation', handler)
+    return () => window.removeEventListener('api:mutation', handler)
+  }, [fetch])
 
   return { chapters, loading, error, refetch: fetch }
 }
