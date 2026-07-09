@@ -72,7 +72,7 @@ app.post('/', async (c) => {
 
   const storyId = formData.get('storyId') as string | null
   const chapterId = formData.get('chapterId') as string | null
-  const files = formData.getAll('files').filter((v): v is File => v instanceof File)
+  const files: File[] = (formData.getAll('files') as any[]).filter((v: any) => v instanceof File)
 
   if (!storyId || !chapterId) {
     return c.json({ error: 'storyId and chapterId required' }, 400)

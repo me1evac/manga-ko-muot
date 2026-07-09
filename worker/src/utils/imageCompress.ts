@@ -86,8 +86,13 @@ export async function decodeToImageData(
   if (mimeType === 'image/webp') return null
 
   if (mimeType === 'image/jpeg') {
-    const decoder = await getJpegDecoder()
-    return decoder.decode(buffer, false)
+    try {
+      const decoder = await getJpegDecoder()
+      return decoder.decode(buffer, false)
+    } catch (e) {
+      console.error('jpeg decode failed', e)
+      return null
+    }
   }
 
   return null
@@ -97,11 +102,16 @@ export async function encodeImageDataToWebp(
   imageData: ImageData,
   quality: number,
 ): Promise<ArrayBuffer | null> {
-  const encoder = await getWebpEncoder()
-  const options: EncodeOptions = { ...WEBP_BASE_OPTIONS, quality }
-  const result = encoder.encode(imageData.data, imageData.width, imageData.height, options)
-  if (!result) return null
-  return result.buffer.slice(0, result.byteLength) as ArrayBuffer
+  try {
+    const encoder = await getWebpEncoder()
+    const options: EncodeOptions = { ...WEBP_BASE_OPTIONS, quality }
+    const result = encoder.encode(imageData.data, imageData.width, imageData.height, options)
+    if (!result) return null
+    return result.buffer.slice(0, result.byteLength) as ArrayBuffer
+  } catch (e) {
+    console.error('webp encode failed', e, { quality })
+    return null
+  }
 }
 
 export async function compressToWebp(

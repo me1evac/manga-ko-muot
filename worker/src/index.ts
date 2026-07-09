@@ -11,6 +11,11 @@ import cleanupHandler from './handlers/cleanup'
 
 const app = new Hono<{ Bindings: Env }>()
 
+app.onError((err, c) => {
+  console.error('unhandled error', err)
+  return c.json({ error: err.message || 'Internal Server Error' }, 500)
+})
+
 app.use('*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
