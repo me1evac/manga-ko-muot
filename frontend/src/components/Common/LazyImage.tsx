@@ -45,31 +45,26 @@ export default function LazyImage({ src, alt, className = '', onLoad, thumbnailS
   useEffect(() => {
     if (!inView || displaySrc) return
     setDisplaySrc(thumbnailSrc ?? src)
+
+    if (thumbnailSrc && thumbnailSrc !== src) {
+      const img = new Image()
+      preloaderRef.current = img
+      img.onload = () => setDisplaySrc(src)
+      img.src = src
+    }
   }, [inView, thumbnailSrc, src, displaySrc])
-
-  useEffect(() => {
-    if (!loaded || !thumbnailSrc || displaySrc === src) return
-
-    const img = new Image()
-    preloaderRef.current = img
-    img.onload = () => setDisplaySrc(src)
-    img.src = src
-  }, [loaded, thumbnailSrc, displaySrc, src])
 
   return (
     <div ref={imgRef} className={`relative overflow-hidden ${className}`}>
-      <div className={`absolute inset-0 bg-zinc-800 ${loaded ? 'opacity-0' : 'animate-pulse'}`} />
+      {!loaded && <div className="absolute inset-0 bg-zinc-800" />}
       {inView && displaySrc && (
         <img
           src={displaySrc}
           alt={alt}
-          className={`relative w-full h-full object-contain transition-opacity duration-300 ${
-            loaded ? 'opacity-100' : 'opacity-0'
+          className={`relative w-full h-full object-contain transition-all duration-500 ${
+            loaded ? 'opacity-100 blur-0 scale-100' : 'opacity-100 blur-xl scale-105'
           }`}
-          onLoad={() => {
-            setLoaded(true)
-            onLoad?.()
-          }}
+          onLoad={() => { setLoaded(true); onLoad?.() }}
           loading="lazy"
         />
       )}
