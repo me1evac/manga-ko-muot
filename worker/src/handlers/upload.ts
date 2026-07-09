@@ -4,7 +4,8 @@ import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId, validateChapterId } from '../validate'
 import { decodeToImageData, encodeImageDataToWebp } from '../utils/imageCompress'
 
-const MAX_FILES = 100
+const MAX_FILES = 35
+const FILE_SIZE_LIMIT = 15 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
@@ -88,6 +89,9 @@ app.post('/', async (c) => {
   for (const file of files) {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return c.json({ error: `unsupported format: ${file.type}` }, 400)
+    }
+    if (file.size > FILE_SIZE_LIMIT) {
+      return c.json({ error: `file too large: ${file.name} (max 15MB)` }, 400)
     }
   }
 

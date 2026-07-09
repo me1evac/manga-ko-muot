@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
 import type { Story } from '../../types'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_FILES = 35
+const MAX_FILE_SIZE = 15 * 1024 * 1024
+const MAX_BATCH_BYTES = 3.5 * 1024 * 1024
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
@@ -27,17 +30,18 @@ function detectFolderName(files: File[]): string | null {
   return null
 }
 
-interface FolderItem {
-  id: number
-  files: File[]
-  chapterNumber: number
-  title: string
-  thumbnails: string[]
-  status: 'pending' | 'exists' | 'creating' | 'uploading' | 'done' | 'error'
-  error?: string
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
-let nextFolderId = 1
+interface FileEntry {
+  file: File
+  preview: string
+  valid: boolean
+  error?: string
+}
 
 interface UploadSectionProps {
   stories: Story[]
@@ -45,22 +49,28 @@ interface UploadSectionProps {
 }
 
 export default function UploadSection({ stories, onSuccess }: UploadSectionProps) {
-  const [mode, setMode] = useState<'manual' | 'folder'>('manual')
   const [storyId, setStoryId] = useState(stories[0]?.id ?? '')
   const [title, setTitle] = useState('')
   const [number, setNumber] = useState('1')
-  const [files, setFiles] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([])
+  const [entries, setEntries] = useState<FileEntry[]>([])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [toast, setToast] = useState<string | null>(null)
-  const [folderItems, setFolderItems] = useState<FolderItem[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
-  const previewUrlsRef = useRef<string[]>([])
-  const folderItemsRef = useRef(folderItems)
-  folderItemsRef.current = folderItems
-  const startTimeRef = useRef(0)
   const [eta, setEta] = useState('')
+  const [toast, setToast] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
+  const startTimeRef = useRef(0)
+  const entriesRef = useRef(entries)
+  entriesRef.current = entries
+
+  useEffect(() => {
+    const el = folderInputRef.current
+    if (!el) return
+    el.setAttribute('webkitdirectory', '')
+    el.setAttribute('directory', '')
+  }, [])
 
   useEffect(() => {
     if (!uploading || progress === 0) return
@@ -77,16 +87,8 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
   }, [uploading, progress])
 
   useEffect(() => {
-    const el = inputRef.current
-    if (!el) return
-    el.setAttribute('webkitdirectory', '')
-    el.setAttribute('directory', '')
-  }, [])
-
-  useEffect(() => {
     return () => {
-      previewUrlsRef.current.forEach(u => URL.revokeObjectURL(u))
-      previewUrlsRef.current = []
+      entriesRef.current.forEach(e => URL.revokeObjectURL(e.preview))
     }
   }, [])
 
@@ -100,70 +102,114 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     return () => window.removeEventListener('beforeunload', handler)
   }, [uploading])
 
-  const removePreview = (idx: number) => {
-    URL.revokeObjectURL(previews[idx])
-    setFiles(prev => prev.filter((_, i) => i !== idx))
-    setPreviews(prev => prev.filter((_, i) => i !== idx))
+  function validateFile(file: File): string | undefined {
+    if (!ALLOWED_TYPES.includes(file.type)) return 'Unsupported format'
+    if (file.size > MAX_FILE_SIZE) return `Exceeds 15MB (${formatSize(file.size)})`
+    return undefined
   }
 
-  function handlePickFolder(e: React.ChangeEvent<HTMLInputElement>) {
-    const fileList = e.target.files
-    if (!fileList || fileList.length === 0) return
-
-    const allFiles = Array.from(fileList).filter(f => ALLOWED_TYPES.includes(f.type))
-    if (allFiles.length === 0) {
-      setToast('No supported images found')
+  function addFiles(newFiles: File[], folderName?: string | null) {
+    if (entries.length + newFiles.length > MAX_FILES) {
+      setToast(`Maximum ${MAX_FILES} files allowed`)
       return
     }
 
+    const detected = folderName ? extractChapterNumber(folderName) : null
+    if (detected != null && !title) {
+      setNumber(String(detected))
+      setTitle(`Chapter ${detected}`)
+    }
+
+    const newEntries: FileEntry[] = newFiles.map(file => {
+      const err = validateFile(file)
+      return { file, preview: URL.createObjectURL(file), valid: !err, error: err }
+    })
+
+    setEntries(prev => [...prev, ...newEntries])
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const fileList = e.target.files
+    if (!fileList || fileList.length === 0) return
+    const allFiles = Array.from(fileList).filter(f => ALLOWED_TYPES.includes(f.type))
+    if (allFiles.length === 0) { setToast('No supported images found'); return }
     allFiles.sort((a, b) => collator.compare(a.name, b.name))
+    addFiles(allFiles)
+    e.target.value = ''
+  }
 
+  function handleFolderSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const fileList = e.target.files
+    if (!fileList || fileList.length === 0) return
+    const allFiles = Array.from(fileList).filter(f => ALLOWED_TYPES.includes(f.type))
+    if (allFiles.length === 0) { setToast('No supported images found'); return }
+    allFiles.sort((a, b) => collator.compare(a.name, b.name))
     const folderName = detectFolderName(allFiles)
-    const extracted = folderName ? extractChapterNumber(folderName) : null
-    const chapterNumber = extracted ??
-      (folderItems.length > 0 ? Math.max(...folderItems.map(i => i.chapterNumber)) + 1 : 1)
-
-    const thumbs = allFiles.slice(0, 3).map(f => URL.createObjectURL(f))
-    previewUrlsRef.current.push(...thumbs)
-
-    const item: FolderItem = {
-      id: nextFolderId++,
-      files: allFiles,
-      chapterNumber,
-      title: `Chapter ${chapterNumber}`,
-      thumbnails: thumbs,
-      status: 'pending',
-    }
-
-    setFolderItems(prev => [...prev, item])
-    if (inputRef.current) inputRef.current.value = ''
+    addFiles(allFiles, folderName)
+    e.target.value = ''
   }
 
-  function removeFolderItem(id: number) {
-    const removed = folderItems.find(i => i.id === id)
-    if (removed) {
-      removed.thumbnails.forEach(u => {
-        URL.revokeObjectURL(u)
-        previewUrlsRef.current = previewUrlsRef.current.filter(b => b !== u)
-      })
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    const items = Array.from(e.dataTransfer.items)
+    if (items.length === 0) {
+      const files = Array.from(e.dataTransfer.files).filter(f => ALLOWED_TYPES.includes(f.type))
+      if (files.length > 0) { files.sort((a, b) => collator.compare(a.name, b.name)); addFiles(files) }
+      return
     }
-    setFolderItems(prev => prev.filter(i => i.id !== id))
+    const allFiles: File[] = []
+    let folderName: string | null = null
+    let pending = 0
+    function processEntry(entry: any) {
+      if (entry.isDirectory) {
+        if (!folderName) folderName = entry.name
+        pending++
+        const reader = entry.createReader()
+        reader.readEntries((entries: any[]) => {
+          entries.forEach(e => processEntry(e))
+          pending--
+          if (pending === 0) finish()
+        })
+      } else if (entry.isFile) {
+        pending++
+        entry.file((file: File) => {
+          if (ALLOWED_TYPES.includes(file.type)) allFiles.push(file)
+          pending--
+          if (pending === 0) finish()
+        })
+      }
+    }
+    function finish() {
+      if (allFiles.length === 0) { setToast('No supported images found'); return }
+      allFiles.sort((a, b) => collator.compare(a.name, b.name))
+      addFiles(allFiles, folderName)
+    }
+    items.forEach(item => { const entry = item.webkitGetAsEntry(); if (entry) processEntry(entry) })
+    if (pending === 0) finish()
   }
 
-  const handleManualUpload = async () => {
-    if (!storyId || !title.trim() || !number || files.length === 0) return
+  function removeEntry(idx: number) {
+    URL.revokeObjectURL(entries[idx].preview)
+    setEntries(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function uploadAll() {
+    if (!storyId || !title.trim() || !number) return
+    const validEntries = entries.filter(e => e.valid)
+    if (validEntries.length === 0) return
 
     try {
       const existing = await api.chapters.list(storyId)
       if (existing.some(ch => ch.number === parseInt(number, 10))) {
-        setToast(`Chapter ${number} already exists — delete it first or use a different number`)
+        setToast(`Chapter ${number} already exists`)
         return
       }
-    } catch {
-    }
+    } catch {}
 
     setUploading(true)
     startTimeRef.current = Date.now()
+
     try {
       const chapter = await api.chapters.create({
         storyId,
@@ -171,27 +217,30 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
         number: parseInt(number, 10),
       })
 
+      const files = validEntries.map(e => e.file)
       const totalBytes = files.reduce((s, f) => s + f.size, 0)
       let uploadedBytes = 0
 
-      for (let i = 0; i < files.length; i++) {
-        const chunk = [files[i]]
-        const chunkBytes = files[i].size
-        await api.upload.pages(storyId, chapter.id, chunk, (done) => {
-          const pct = Math.min(((uploadedBytes + done) / totalBytes) * 100, 99)
-          setProgress(Math.round(pct))
-        })
-        uploadedBytes += chunkBytes
+      let batch: File[] = []
+      let batchBytes = 0
+      for (const file of files) {
+        if (batchBytes + file.size > MAX_BATCH_BYTES && batch.length > 0) {
+          await uploadBatch(storyId, chapter.id, batch, uploadedBytes, totalBytes)
+          uploadedBytes += batch.reduce((s, f) => s + f.size, 0)
+          batch = []; batchBytes = 0
+        }
+        batch.push(file)
+        batchBytes += file.size
+      }
+      if (batch.length > 0) {
+        await uploadBatch(storyId, chapter.id, batch, uploadedBytes, totalBytes)
       }
 
-      previews.forEach(u => URL.revokeObjectURL(u))
+      entries.forEach(e => URL.revokeObjectURL(e.preview))
+      setEntries([])
+      setTitle(''); setNumber('1')
+      setProgress(0); setEta('')
       setToast(`Uploaded ${files.length} pages`)
-      setFiles([])
-      setPreviews([])
-      setTitle('')
-      setNumber('1')
-      setProgress(0)
-      setEta('')
       onSuccess()
     } catch (err: any) {
       setToast(err.message)
@@ -200,248 +249,131 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     }
   }
 
-  const handleFolderUpload = async () => {
-    const pending = folderItems.filter(i => i.status === 'pending')
-    if (pending.length === 0) return
-
-    setUploading(true)
-    startTimeRef.current = Date.now()
-
-    const storyIds = [...new Set([storyId])]
-
-    const existingByStory: Record<string, Set<number>> = {}
-    await Promise.all(storyIds.map(async (sid) => {
-      try {
-        const chapters = await api.chapters.list(sid)
-        existingByStory[sid] = new Set(chapters.map(ch => ch.number))
-      } catch {
-        existingByStory[sid] = new Set()
-      }
-    }))
-
-    const totalBytes = pending.reduce((sum, i) => sum + i.files.reduce((s, f) => s + f.size, 0), 0)
-    let fullyUploadedBytes = 0
-    let completed = 0
-    let exists = 0
-
-    for (const item of folderItemsRef.current) {
-      if (item.status !== 'pending') continue
-
-      if (existingByStory[storyId]?.has(item.chapterNumber)) {
-        setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'exists' as const } : i))
-        exists++
-        continue
-      }
-
-      setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'creating' as const } : i))
-
-      try {
-        const chapter = await api.chapters.create({
-          storyId,
-          title: item.title,
-          number: item.chapterNumber,
-        })
-
-        existingByStory[storyId].add(item.chapterNumber)
-
-        setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' as const } : i))
-
-        for (let c = 0; c < item.files.length; c++) {
-          const file = item.files[c]
-          await api.upload.pages(storyId, chapter.id, [file], (done) => {
-            const pct = Math.min(((fullyUploadedBytes + done) / totalBytes) * 100, 99)
-            setProgress(Math.round(pct))
-          })
-          fullyUploadedBytes += file.size
-        }
-
-        setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'done' as const } : i))
-        completed++
-      } catch (err: any) {
-        if (/already exists|exists/i.test(err.message ?? '')) {
-          setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'exists' as const } : i))
-          exists++
-        } else {
-          setFolderItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error' as const, error: err.message } : i))
-        }
-      }
-    }
-
-    setUploading(false)
-    setProgress(100)
-    setEta('')
-    onSuccess()
-
-    setTimeout(() => {
-      setFolderItems(prev => prev.filter(i => i.status !== 'done' && i.status !== 'exists'))
-    }, 2000)
-
-    setToast(`${completed} chapter(s) uploaded, ${exists} skipped (already exist)`)
+  async function uploadBatch(storyId: string, chapterId: string, files: File[], uploadedBytes: number, totalBytes: number) {
+    await api.upload.pages(storyId, chapterId, files, (done) => {
+      const pct = Math.min(((uploadedBytes + done) / totalBytes) * 100, 99)
+      setProgress(Math.round(pct))
+    })
   }
 
-  const pendingCount = folderItems.filter(i => i.status === 'pending').length
+  const invalidFiles = entries.filter(e => !e.valid)
+  const validCount = entries.filter(e => e.valid).length
+  const totalSize = entries.reduce((s, e) => s + e.file.size, 0)
 
   return (
     <div className="space-y-6">
-      {toast && <Toast message={toast} type={toast.includes('rror') || toast.includes('error') ? 'error' : 'success'} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast} type={toast.includes('rror') || toast.includes('error') || toast.includes('already') ? 'error' : 'success'} onClose={() => setToast(null)} />}
 
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
-        <button
-          onClick={() => setMode('manual')}
-          className={`flex-1 py-2 text-sm rounded-md transition-colors ${mode === 'manual' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'}`}
-        >
-          Manual
-        </button>
-        <button
-          onClick={() => setMode('folder')}
-          className={`flex-1 py-2 text-sm rounded-md transition-colors ${mode === 'folder' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'}`}
-        >
-          Upload by folder
-        </button>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">Story</label>
+        <select value={storyId} onChange={e => setStoryId(e.target.value)} className="input-field" disabled={uploading}>
+          {stories.map(s => (
+            <option key={s.id} value={s.id}>{s.id} — {s.title}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-[1fr_2fr] gap-3">
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Story</label>
-          <select value={storyId} onChange={e => setStoryId(e.target.value)} className="input-field" disabled={uploading}>
-            {stories.map(s => (
-              <option key={s.id} value={s.id}>{s.id} — {s.title}</option>
-            ))}
-          </select>
+          <label className="block text-sm text-zinc-400 mb-1">Chapter #</label>
+          <input type="number" min="1" value={number} onChange={e => setNumber(e.target.value)}
+            className="input-field" disabled={uploading} />
         </div>
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Chapter Number</label>
-          <input type="number" min="1" value={number} onChange={e => setNumber(e.target.value)} className="input-field"
-            disabled={uploading} />
-        </div>
-        <div>
-          <label className="block text-sm text-zinc-400 mb-1">Chapter Title</label>
+          <label className="block text-sm text-zinc-400 mb-1">Title</label>
           <input value={title} onChange={e => setTitle(e.target.value)} className="input-field"
             placeholder="e.g. Chapter 1: The Beginning" disabled={uploading} />
         </div>
       </div>
 
-      {mode === 'manual' && (
-        <div className="space-y-4">
-          <div
-            onClick={() => {
-              const input = document.createElement('input')
-              input.type = 'file'
-              input.multiple = true
-              input.accept = 'image/jpeg,image/png,image/webp'
-              input.onchange = (e: any) => {
-                const selected = Array.from(e.target.files as FileList).filter(f => ALLOWED_TYPES.includes(f.type))
-                const urls = selected.map(f => URL.createObjectURL(f))
-                previewUrlsRef.current.push(...urls)
-                setFiles(prev => [...prev, ...selected])
-                setPreviews(prev => [...prev, ...urls])
-              }
-              input.click()
-            }}
-            className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors border-zinc-700 hover:border-zinc-500"
-          >
-            <p className="text-zinc-400 text-sm">Click to select images</p>
-            <p className="text-zinc-600 text-xs mt-1">JPG, PNG, WebP · any number</p>
-          </div>
+      <div
+        onDrop={handleDrop}
+        onDragOver={e => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onClick={() => fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+          dragging ? 'border-purple-500 bg-purple-900/20' : 'border-zinc-700 hover:border-zinc-500'
+        }`}
+      >
+        <input ref={fileInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp"
+          style={{ display: 'none' }} onChange={handleFileSelect} />
+        <input ref={folderInputRef} type="file" multiple style={{ display: 'none' }}
+          onChange={handleFolderSelect} />
 
-          {files.length > 0 && (
-            <div>
-              <p className="text-sm text-zinc-400 mb-2">{files.length} file(s) selected</p>
-              <div className="flex flex-wrap gap-2">
-                {files.map((f, i) => (
-                  <div key={i} className="relative w-16 h-20 rounded overflow-hidden bg-zinc-800 group">
-                    <img src={previews[i]} alt="" className="w-full h-full object-cover" />
-                    {!uploading && (
-                      <button onClick={() => removePreview(i)}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-900/80 rounded-full text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={handleManualUpload}
-            disabled={uploading || files.length === 0 || !storyId || !title.trim()}
-            className="btn-primary w-full inline-flex items-center justify-center gap-2"
-          >
-            {uploading && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-            {uploading ? 'Uploading...' : `Upload ${files.length} page(s)`}
+        <div className="text-zinc-400 text-sm mb-2">
+          Drop images or click to select
+        </div>
+        <p className="text-zinc-600 text-xs">
+          JPG, PNG, WebP · max {MAX_FILES} files · 15MB each
+        </p>
+        <div className="flex items-center justify-center gap-4 mt-3">
+          <button onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}
+            className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded transition-colors text-zinc-300">
+            Select files
           </button>
+          <span className="text-zinc-700 text-xs">or</span>
+          <button onClick={e => { e.stopPropagation(); folderInputRef.current?.click() }}
+            className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded transition-colors text-zinc-300">
+            Select folder
+          </button>
+        </div>
+      </div>
+
+      {entries.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm text-zinc-400">
+            {entries.length} file(s) · {formatSize(totalSize)}
+            {invalidFiles.length > 0 && (
+              <span className="text-red-400 ml-2">({invalidFiles.length} invalid)</span>
+            )}
+          </p>
+
+          <div className="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
+            {entries.map((entry, i) => (
+              <div key={i} className={`flex items-center gap-3 bg-zinc-900/50 rounded-lg px-3 py-2 border ${
+                entry.valid ? 'border-zinc-800' : 'border-red-900/50'
+              }`}>
+                <div className="w-10 h-12 rounded overflow-hidden bg-zinc-800 shrink-0">
+                  <img src={entry.preview} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-zinc-300 truncate">{entry.file.name}</p>
+                  <p className={`text-[10px] ${entry.valid ? 'text-zinc-500' : 'text-red-400'}`}>
+                    {formatSize(entry.file.size)}
+                    {entry.error && ` · ${entry.error}`}
+                  </p>
+                </div>
+                {!uploading && (
+                  <button onClick={() => removeEntry(i)}
+                    className="text-zinc-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {mode === 'folder' && (
-        <div className="space-y-4">
-          <div
-            onClick={() => inputRef.current?.click()}
-            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors border-zinc-700 hover:border-zinc-500"
-          >
-            <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handlePickFolder} />
-            <p className="text-zinc-400 text-sm">Pick a chapter folder</p>
-          </div>
-
-          {folderItems.length > 0 && (
-            <div className="space-y-2">
-              {folderItems.map((item, i) => (
-                <div key={item.id} className="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
-                  <div className="flex items-start gap-3">
-                    <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
-                      item.status === 'done' ? 'bg-green-500' :
-                      item.status === 'exists' ? 'bg-yellow-500' :
-                      item.status === 'creating' || item.status === 'uploading' ? 'bg-purple-500 animate-pulse' :
-                      item.status === 'error' ? 'bg-red-500' :
-                      'bg-zinc-600'
-                    }`} />
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <p className="text-sm font-medium text-zinc-200">{item.title}</p>
-                      <p className="text-xs text-zinc-500">{item.files.length} page(s) · {item.status}</p>
-                      {item.error && <p className="text-xs text-red-400">{item.error}</p>}
-                    </div>
-                    <div className="flex items-start gap-2 shrink-0">
-                      {item.thumbnails.length > 0 && (
-                        <div className="w-10 h-12 rounded overflow-hidden bg-zinc-800">
-                          <img src={item.thumbnails[0]} alt="" className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      {!uploading && (
-                        <button onClick={() => removeFolderItem(item.id)}
-                          className="text-zinc-600 hover:text-red-400 text-lg leading-none mt-0.5">×</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
+      {entries.length > 0 && (
+        <button onClick={uploadAll} disabled={uploading || validCount === 0 || !storyId || !title.trim() || !number}
+          className="btn-primary w-full inline-flex items-center justify-center gap-2"
+        >
           {uploading && (
-            <div className="space-y-2">
-              <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${progress}%` }} />
-              </div>
-              <p className="text-xs text-zinc-500 text-center">Uploading... {progress}%</p>
-            </div>
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
           )}
-
-          {folderItems.length > 0 && (
-            <button
-              onClick={handleFolderUpload}
-              disabled={uploading || pendingCount === 0}
-              className="btn-primary w-full inline-flex items-center justify-center gap-2"
-            >
-              {uploading && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-              {uploading ? 'Uploading...' : `Upload ${pendingCount} chapter(s)`}
-            </button>
-          )}
-        </div>
+          {uploading ? 'Uploading...' : `Upload ${validCount} page(s)`}
+        </button>
       )}
 
       {uploading && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-900/30 border border-amber-800/50 rounded-lg px-3 py-2">
-            <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
             <span>Upload in progress — don't switch tabs or navigate away</span>
           </div>
           <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
