@@ -132,6 +132,16 @@ export const api = {
       notifyMutation()
       return result
     },
+    swap: async (storyId: string, chapterId1: string, chapterId2: string) => {
+      clearCache('/chapters')
+      clearCache('/stories')
+      const result = await request<{ ok: boolean }>(`/chapters/${storyId}/swap`, {
+        method: 'PATCH',
+        body: JSON.stringify({ chapterId1, chapterId2 }),
+      })
+      notifyMutation()
+      return result
+    },
     delete: async (storyId: string, chapterId: string) => {
       clearCache('/chapters')
       clearCache('/stories')

@@ -97,6 +97,26 @@ app.patch('/:storyId/:chapterId/reorder', async (c) => {
   return c.json(chapters[idx])
 })
 
+app.patch('/:storyId/swap', async (c) => {
+  const kv = c.env.MANGA_KV
+  const { storyId } = c.req.param()
+  const { chapterId1, chapterId2 } = await c.req.json<{ chapterId1: string; chapterId2: string }>()
+  const err = validateStoryId(storyId)
+  if (err) return c.json({ error: err }, 400)
+
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(storyId))) ?? []
+  const ch1 = chapters.find(ch => ch.id === chapterId1)
+  const ch2 = chapters.find(ch => ch.id === chapterId2)
+  if (!ch1 || !ch2) return c.json({ error: 'chapter not found' }, 404)
+
+  const tmp = ch1.number
+  ch1.number = ch2.number
+  ch2.number = tmp
+  await putJson(kv, KEYS.chapters(storyId), chapters)
+
+  return c.json({ ok: true })
+})
+
 app.delete('/:storyId/:chapterId', async (c) => {
   const kv = c.env.MANGA_KV
   const bucket = c.env.MANGA_BUCKET

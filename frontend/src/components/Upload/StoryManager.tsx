@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import Toast from '../Common/Toast'
 import type { Story, Chapter, StoryWithChapters } from '../../types'
@@ -18,7 +18,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
   const [editForm, setEditForm] = useState({ title: '', description: '', status: '' as Story['status'] })
   const [toast, setToast] = useState<string | null>(null)
 
-  useState(() => {
+  useEffect(() => {
     api.stories.list().then((data) => {
       setStories(data)
       setLoading(false)
@@ -26,7 +26,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
       setLoading(false)
       setToast('Failed to load stories')
     })
-  })
+  }, [])
 
   const loadChapters = async (id: string) => {
     if (expandedId === id) {
@@ -93,8 +93,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
 
     const swap = chapters[swapIdx]
     try {
-      await api.chapters.reorder(storyId, chapter.id, swap.number)
-      await api.chapters.reorder(storyId, swap.id, chapter.number)
+      await api.chapters.swap(storyId, chapter.id, swap.id)
       setToast(`Chapter moved ${dir}`)
       const data = await api.stories.get(storyId)
       setStoryData(data)

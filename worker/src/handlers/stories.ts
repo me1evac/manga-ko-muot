@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { Env, Story, Chapter } from '../types'
+import type { Env, Story, Chapter, PageRecord } from '../types'
 import { KEYS, getJson, putJson } from '../store/kv'
 import { validateStoryId } from '../validate'
 
@@ -87,10 +87,25 @@ app.patch('/:id', async (c) => {
 
 app.delete('/:id', async (c) => {
   const kv = c.env.MANGA_KV
+  const bucket = c.env.MANGA_BUCKET
   const id = c.req.param('id')
   const err = validateStoryId(id)
   if (err) return c.json({ error: err }, 400)
+
+  const chapters = (await getJson<Chapter[]>(kv, KEYS.chapters(id))) ?? []
+
+  await Promise.all(chapters.map(async (ch) => {
+    const pages = (await getJson<PageRecord[]>(kv, KEYS.pages(id, ch.id))) ?? []
+    await Promise.all(pages.flatMap(p => {
+      const keys = [bucket.delete(p.fileId).catch(() => {})]
+      if (p.thumbnailId) keys.push(bucket.delete(p.thumbnailId).catch(() => {}))
+      return keys
+    }))
+    await kv.delete(KEYS.pages(id, ch.id))
+  }))
+  await kv.delete(KEYS.chapters(id))
   await kv.delete(KEYS.story(id))
+
   return c.json({ ok: true })
 })
 
