@@ -70,33 +70,37 @@ export const api = {
     },
     create: async (data: Partial<Story>) => {
       clearCache('/stories')
-      notifyMutation()
-      return request<Story>('/stories', {
+      const result = await request<Story>('/stories', {
         method: 'POST',
         body: JSON.stringify(data),
       })
+      notifyMutation()
+      return result
     },
     update: async (id: string, data: Partial<Story>) => {
       clearCache('/stories')
-      notifyMutation()
-      return request<Story>(`/stories/${id}`, {
+      const result = await request<Story>(`/stories/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       })
+      notifyMutation()
+      return result
     },
     delete: async (id: string) => {
       clearCache('/stories')
+      const result = await request<{ ok: boolean }>(`/stories/${id}`, { method: 'DELETE' })
       notifyMutation()
-      return request<{ ok: boolean }>(`/stories/${id}`, { method: 'DELETE' })
+      return result
     },
     reorder: async (id: string, newOrder: string[]) => {
       clearCache('/stories')
       clearCache('/chapters')
-      notifyMutation()
-      return request<{ ok: boolean }>(`/stories/${id}/reorder`, {
+      const result = await request<{ ok: boolean }>(`/stories/${id}/reorder`, {
         method: 'PATCH',
         body: JSON.stringify({ order: newOrder }),
       })
+      notifyMutation()
+      return result
     },
   },
 
@@ -111,28 +115,31 @@ export const api = {
     create: async (data: Partial<Chapter>) => {
       clearCache('/stories')
       clearCache('/chapters')
-      notifyMutation()
-      return request<Chapter>('/chapters', {
+      const result = await request<Chapter>('/chapters', {
         method: 'POST',
         body: JSON.stringify(data),
       })
+      notifyMutation()
+      return result
     },
     reorder: async (storyId: string, chapterId: string, newNumber: number) => {
       clearCache('/chapters')
       clearCache('/stories')
-      notifyMutation()
-      return request<Chapter>(`/chapters/${storyId}/${chapterId}/reorder`, {
+      const result = await request<Chapter>(`/chapters/${storyId}/${chapterId}/reorder`, {
         method: 'PATCH',
         body: JSON.stringify({ newNumber }),
       })
+      notifyMutation()
+      return result
     },
     delete: async (storyId: string, chapterId: string) => {
       clearCache('/chapters')
       clearCache('/stories')
-      notifyMutation()
-      return request<{ ok: boolean }>(`/chapters/${storyId}/${chapterId}`, {
+      const result = await request<{ ok: boolean }>(`/chapters/${storyId}/${chapterId}`, {
         method: 'DELETE',
       })
+      notifyMutation()
+      return result
     },
   },
 
