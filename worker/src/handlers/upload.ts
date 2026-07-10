@@ -15,30 +15,21 @@ const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
 }
 
 async function processFile(file: File): Promise<{
-  hq: { buffer: ArrayBuffer; type: string; ext: 'jpg' | 'png' | 'webp' }
-  lq: ArrayBuffer | null
+  buffer: ArrayBuffer
+  type: string
+  ext: 'jpg' | 'png' | 'webp'
 }> {
-  const buffer = await file.arrayBuffer()
-  const ext = EXT_MAP[file.type] ?? 'jpg'
+  const buf = await file.arrayBuffer()
 
-  const imageData = await decodeToImageData(buffer, file.type)
+  const imageData = await decodeToImageData(buf, file.type)
   if (imageData) {
-    const [hqBuf, lqBuf] = await Promise.all([
-      encodeImageDataToWebp(imageData, 80),
-      encodeImageDataToWebp(imageData, 15),
-    ])
-    if (hqBuf) {
-      return {
-        hq: { buffer: hqBuf, type: 'image/webp', ext: 'webp' },
-        lq: lqBuf,
-      }
+    const webpBuf = await encodeImageDataToWebp(imageData, 80)
+    if (webpBuf) {
+      return { buffer: webpBuf, type: 'image/webp', ext: 'webp' }
     }
   }
 
-  return {
-    hq: { buffer, type: file.type, ext },
-    lq: null,
-  }
+  return { buffer: buf, type: file.type, ext: EXT_MAP[file.type] ?? 'jpg' }
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -52,7 +43,7 @@ app.post('/cover', async (c) => {
   if (!ALLOWED_TYPES.includes(file.type)) {
     return c.json({ error: `unsupported format: ${file.type}` }, 400)
   }
-  const { hq: { buffer, type, ext }, lq: _lq } = await processFile(file)
+  const { buffer, type, ext } = await processFile(file)
   const key = `covers/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
   await c.env.MANGA_BUCKET.put(key, buffer, {
     httpMetadata: { contentType: type },
@@ -109,29 +100,21 @@ app.post('/', async (c) => {
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
-    const { hq, lq } = await processFile(file)
+    const { buffer, type, ext } = await processFile(file)
     const pageNum = nextPageNum++
-    const hqKey = `pages/${storyId}/${chapterId}/${pageNum}.${hq.ext}`
-    const lqKey = `pages/${storyId}/${chapterId}/${pageNum}_lq.${hq.ext}`
+    const key = `pages/${storyId}/${chapterId}/${pageNum}.${ext}`
 
-    await bucket.put(hqKey, hq.buffer, {
-      httpMetadata: { contentType: hq.type },
+    await bucket.put(key, buffer, {
+      httpMetadata: { contentType: type },
     })
-
-    if (lq) {
-      await bucket.put(lqKey, lq, {
-        httpMetadata: { contentType: 'image/webp' },
-      })
-    }
 
     newPages.push({
       id: `p${chapterId}_${pageNum}`,
       chapterId,
       storyId,
-      fileId: hqKey,
-      thumbnailId: lq ? lqKey : undefined,
+      fileId: key,
       pageNumber: pageNum,
-      format: hq.ext,
+      format: ext,
       fileSize: file.size,
     })
   }
