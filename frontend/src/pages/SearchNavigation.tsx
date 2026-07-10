@@ -20,7 +20,7 @@ export default function SearchNavigation() {
     <div className="md:hidden min-h-screen flex flex-col bg-zinc-950">
       {/* Search bar */}
       <div className="flex items-center gap-3 px-4 h-14 border-b border-zinc-800">
-        <button onClick={() => navigate(-1)} className="p-1 text-zinc-400 hover:text-white">
+        <button onClick={() => navigate(-1)} className="p-1 text-zinc-400 hover:text-white" aria-label="Back">
           <ChevronLeftIcon className="w-5 h-5" />
         </button>
         <SearchIcon className="w-5 h-5 text-zinc-400 shrink-0" />
@@ -29,7 +29,7 @@ export default function SearchNavigation() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search stories..."
-          className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 outline-none text-base"
+          className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-400 outline-none text-base" aria-label="Search stories"
         />
       </div>
 
@@ -37,7 +37,7 @@ export default function SearchNavigation() {
         {/* Related search */}
         {!query.trim() && (
           <div className="px-4 py-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Related search</p>
+            <p className="text-xs text-zinc-400 uppercase tracking-wider mb-3">Related search</p>
             <div className="flex flex-wrap gap-2">
               {RELATED_TAGS.map((tag) => (
                 <button
@@ -56,7 +56,7 @@ export default function SearchNavigation() {
         {query.trim() && (
           <div className="px-4 py-2">
             {filtered.length === 0 ? (
-              <p className="text-zinc-500 text-center pt-6 pb-4">
+              <p className="text-zinc-400 text-center pt-6 pb-4">
                 No stories matching "{query}"
               </p>
             ) : (

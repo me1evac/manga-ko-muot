@@ -35,9 +35,9 @@ export default function SearchSheet() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search stories..."
-        className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 outline-none text-base"
+        className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-400 outline-none text-base" aria-label="Search stories"
       />
-      <button onClick={close} className="p-1 text-zinc-400 hover:text-white">
+      <button onClick={close} className="p-1 text-zinc-400 hover:text-white" aria-label="Close search">
         <XIcon className="w-5 h-5" />
       </button>
     </div>
@@ -45,7 +45,7 @@ export default function SearchSheet() {
 
   const relatedSection = !query.trim() && (
     <div className="px-4 py-4">
-      <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Related search</p>
+      <p className="text-xs text-zinc-400 uppercase tracking-wider mb-3">Related search</p>
       <div className="flex flex-wrap gap-2">
         {RELATED_TAGS.map((tag) => (
           <button
@@ -63,7 +63,7 @@ export default function SearchSheet() {
   const resultsSection = query.trim() && (
     <div className="max-h-80 overflow-y-auto px-4 py-2">
       {filtered.length === 0 ? (
-        <p className="text-zinc-500 text-center pt-6 pb-4">
+        <p className="text-zinc-400 text-center pt-6 pb-4">
           No stories matching "{query}"
         </p>
       ) : (
@@ -96,7 +96,7 @@ export default function SearchSheet() {
   return (
     <>
       {/* Mobile overlay */}
-      <div className="fixed inset-0 z-50 bg-zinc-950 md:hidden flex flex-col">
+      <div className="fixed inset-0 z-50 bg-zinc-950 md:hidden flex flex-col" role="dialog" aria-modal="true" aria-label="Search">
         {searchBar}
         <div className="flex-1 overflow-y-auto">
           {relatedSection}
@@ -105,7 +105,7 @@ export default function SearchSheet() {
       </div>
 
       {/* Desktop overlay */}
-      <div className="hidden md:block fixed inset-0 z-50 bg-zinc-950 flex flex-col">
+      <div className="hidden md:block fixed inset-0 z-50 bg-zinc-950 flex flex-col" role="dialog" aria-modal="true" aria-label="Search">
         <div className="max-w-5xl mx-auto w-full">
           {searchBar}
           {relatedSection}

@@ -78,7 +78,7 @@ export default function ArchitecturePage() {
         />
       )}
 
-      <nav className="flex md:flex-col gap-1 mb-6 md:mb-0 md:w-44 md:shrink-0 md:sticky md:top-6 md:self-start">
+      <nav aria-label="Architecture tabs" className="flex md:flex-col gap-1 mb-6 md:mb-0 md:w-44 md:shrink-0 md:sticky md:top-6 md:self-start">
         <h1 className="text-lg font-bold md:mb-6 md:px-3 hidden md:block">Architecture</h1>
         {tabs.map((t) => (
           <button
@@ -103,20 +103,20 @@ export default function ArchitecturePage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                   <p className="text-2xl font-bold text-zinc-100">{stats.stories}</p>
-                  <p className="text-xs text-zinc-500 mt-1">Stories</p>
+                  <p className="text-xs text-zinc-400 mt-1">Stories</p>
                 </div>
                 <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                   <p className="text-2xl font-bold text-zinc-100">{stats.chapters}</p>
-                  <p className="text-xs text-zinc-500 mt-1">Chapters</p>
+                  <p className="text-xs text-zinc-400 mt-1">Chapters</p>
                 </div>
                 <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
                   <p className="text-2xl font-bold text-zinc-100">{stats.pages}</p>
-                  <p className="text-xs text-zinc-500 mt-1">Pages</p>
+                  <p className="text-xs text-zinc-400 mt-1">Pages</p>
                 </div>
               </div>
             )}
             {statsLoading && (
-              <div className="text-xs text-zinc-500">Loading stats...</div>
+              <div className="text-xs text-zinc-400">Loading stats...</div>
             )}
             <StoryManager onChanged={() => refetch()} />
           </div>
@@ -166,7 +166,7 @@ export default function ArchitecturePage() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={`w-4 h-4 text-zinc-500 transition-transform ${helpOpen ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-zinc-400 transition-transform ${helpOpen ? 'rotate-180' : ''}`}
                 >
                   <polyline points="6 9 12 15 18 9" />
                 </svg>

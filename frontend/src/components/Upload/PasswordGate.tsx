@@ -17,21 +17,14 @@ export default function PasswordGate({ onUnlock }: PasswordGateProps) {
     try {
       const res = await fetch('/api/config/password')
       const data = await res.json()
-      const correctPassword = data.password ?? 'admin2k08'
-
-      if (password === correctPassword) {
+      if (password === data.password) {
         sessionStorage.setItem('arch-auth', 'true')
         onUnlock()
       } else {
         setError(true)
       }
     } catch {
-      if (password === 'admin2k08') {
-        sessionStorage.setItem('arch-auth', 'true')
-        onUnlock()
-      } else {
-        setError(true)
-      }
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -40,9 +33,9 @@ export default function PasswordGate({ onUnlock }: PasswordGateProps) {
   return (
     <div className="max-w-sm mx-auto mt-20 p-6">
       <div className="text-center mb-8">
-        <div className="text-4xl mb-3 text-zinc-500">◇</div>
+        <div className="text-4xl mb-3 text-zinc-400">◇</div>
         <h2 className="text-xl font-semibold">Architecture</h2>
-        <p className="text-sm text-zinc-500 mt-1">Enter password to access</p>
+        <p className="text-sm text-zinc-400 mt-1">Enter password to access</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

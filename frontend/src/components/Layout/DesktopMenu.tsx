@@ -52,7 +52,7 @@ export default function DesktopMenu({ onClose }: Props) {
         </button>
       ))}
       <div className="border-t border-zinc-800 mt-1 pt-1 px-4 pb-2">
-        <span className="text-xs text-zinc-600">v0.1</span>
+        <span className="text-xs text-zinc-400">v0.1</span>
       </div>
     </div>
   )

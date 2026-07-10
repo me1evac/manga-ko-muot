@@ -31,7 +31,7 @@ export default function StoryPage() {
   if (error || !data) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-zinc-500">{error ?? 'Story not found'}</p>
+        <p className="text-zinc-400">{error ?? 'Story not found'}</p>
         <Link to="/" className="text-purple-400 text-sm mt-2 inline-block">
           Back to home
         </Link>
@@ -59,7 +59,7 @@ export default function StoryPage() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-3xl">
+            <div className="w-full h-full flex items-center justify-center text-zinc-400 text-3xl">
               ◈
             </div>
           )}
@@ -80,7 +80,7 @@ export default function StoryPage() {
               {story.description}
             </p>
           )}
-          <p className="text-xs text-zinc-600 mt-2">
+          <p className="text-xs text-zinc-400 mt-2">
             Updated {formatDate(story.updatedAt)}
           </p>
           {progress && (
@@ -89,7 +89,7 @@ export default function StoryPage() {
               className="mt-3 inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition-colors"
             >
               Continue to read at Chapter {progress.chapterNumber}
-              <span className="text-xs text-zinc-500">
+<span className="text-xs text-zinc-400">
                 (page {progress.pageNumber}/{progress.totalPages})
               </span>
             </Link>
@@ -102,7 +102,7 @@ export default function StoryPage() {
       </h2>
 
       {total === 0 ? (
-        <p className="text-zinc-600 text-sm">No chapters yet</p>
+        <p className="text-zinc-400 text-sm">No chapters yet</p>
       ) : (
         <div className="space-y-2">
           {chapters.map((ch) => (
@@ -114,11 +114,11 @@ export default function StoryPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-zinc-200">{ch.title}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
+                  <p className="text-xs text-zinc-400 mt-0.5">
                     {ch.pageCount} pages · Ch. {ch.number}
                   </p>
                 </div>
-                <span className="text-zinc-600 text-lg">→</span>
+                <span className="text-zinc-400 text-lg">→</span>
               </div>
             </Link>
           ))}
@@ -134,7 +134,7 @@ export default function StoryPage() {
           >
             Previous
           </button>
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-400">
             Page {currentPage} of {totalPages}
           </span>
           <button

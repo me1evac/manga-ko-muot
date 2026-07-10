@@ -111,10 +111,10 @@ export default function LeftRightReader({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-400">
             {currentPage}/{totalPages}
           </span>
-          <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1.5 rounded transition-colors text-zinc-300">
+          <button onClick={onToggleMode} className="text-xs bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1.5 rounded transition-colors text-zinc-300" aria-label="Switch to scroll mode">
             Scroll
           </button>
           {nextChapterId && (
@@ -147,9 +147,9 @@ export default function LeftRightReader({
       </div>
 
       <div className="absolute inset-0 flex">
-        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goPrev() }} />
+        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goPrev() }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goPrev() }} aria-label="Previous page" />
         <div className="w-1/3 h-full" />
-        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goNext() }} />
+        <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); goNext() }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goNext() }} aria-label="Next page" />
       </div>
     </div>
   )

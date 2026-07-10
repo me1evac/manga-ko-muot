@@ -103,11 +103,11 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
   }
 
   if (loading) {
-    return <div className="text-zinc-500 text-sm py-8 text-center">Loading...</div>
+    return <div className="text-zinc-400 text-sm py-8 text-center">Loading...</div>
   }
 
   if (stories.length === 0) {
-    return <div className="text-zinc-500 text-sm py-8 text-center">No stories yet</div>
+    return <div className="text-zinc-400 text-sm py-8 text-center">No stories yet</div>
   }
 
   return (
@@ -150,7 +150,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-zinc-500 font-mono">{s.id}</span>
+                      <span className="text-xs text-zinc-400 font-mono">{s.id}</span>
                       <h3 className="font-medium text-sm truncate">{s.title}</h3>
                       <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
                         s.status === 'ongoing' ? 'bg-green-900/50 text-green-400' :
@@ -161,7 +161,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
                       </span>
                     </div>
                     {s.description && (
-                      <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{s.description}</p>
+                      <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{s.description}</p>
                     )}
                   </>
                 )}
@@ -169,13 +169,13 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
 
               {editingId !== s.id && (
                 <div className="flex items-center gap-1 ml-3 shrink-0">
-                  <button onClick={() => startEdit(s)} className="text-zinc-400 hover:text-white p-1" title="Edit">
+                  <button onClick={() => startEdit(s)} className="text-zinc-400 hover:text-white p-1" aria-label="Edit story">
                     <EditIcon className="w-4 h-4" />
                   </button>
-                  <button onClick={() => deleteStory(s.id)} className="text-red-400 hover:text-red-300 p-1" title="Delete">
+                  <button onClick={() => deleteStory(s.id)} className="text-red-400 hover:text-red-300 p-1" aria-label="Delete story">
                     <TrashIcon className="w-4 h-4" />
                   </button>
-                  <button onClick={() => loadChapters(s.id)} className="text-zinc-400 hover:text-white p-1" title={expandedId === s.id ? 'Collapse' : 'Expand'}>
+                  <button onClick={() => loadChapters(s.id)} className="text-zinc-400 hover:text-white p-1" aria-label={expandedId === s.id ? 'Collapse chapters' : 'Expand chapters'}>
                     {expandedId === s.id ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />}
                   </button>
                 </div>
@@ -185,7 +185,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
 
           {expandedId === s.id && (
             <div className="border-t border-zinc-800 px-4 py-3 space-y-2">
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Chapters</p>
+              <p className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Chapters</p>
               {chaptersLoading && !storyData ? (
                 <div className="space-y-2 animate-pulse">
                   {[1,2,3].map(i => (
@@ -193,7 +193,7 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
                   ))}
                 </div>
               ) : storyData && storyData.chapters.length === 0 ? (
-                <p className="text-xs text-zinc-600">No chapters</p>
+                <p className="text-xs text-zinc-400">No chapters</p>
               ) : storyData ? (
                 storyData.chapters.sort((a, b) => a.number - b.number).map((ch, i) => (
                   <div key={ch.id} className="flex items-center justify-between bg-zinc-800/50 rounded px-3 py-2">
@@ -202,27 +202,27 @@ export default function StoryManager({ onChanged }: StoryManagerProps) {
                         <button
                           onClick={() => reorderChapter(s.id, ch, 'up')}
                           disabled={i === 0}
-                          className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
-                          title="Move up"
+                          className="text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
+                          aria-label="Move chapter up"
                         >
                           <ChevronUpIcon className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => reorderChapter(s.id, ch, 'down')}
                           disabled={i === storyData.chapters.length - 1}
-                          className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
-                          title="Move down"
+                          className="text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed leading-none"
+                          aria-label="Move chapter down"
                         >
                           <ChevronDownIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <span className="text-xs text-zinc-300">{ch.title}</span>
-                      <span className="text-[10px] text-zinc-500">Ch.{ch.number} · {ch.pageCount}p</span>
+                      <span className="text-[10px] text-zinc-400">Ch.{ch.number} · {ch.pageCount}p</span>
                     </div>
                     <button
                       onClick={() => deleteChapter(s.id, ch.id)}
                       className="text-red-400 hover:text-red-300 p-1"
-                      title="Delete chapter"
+                      aria-label="Delete chapter"
                     >
                       <XIcon className="w-3.5 h-3.5" />
                     </button>

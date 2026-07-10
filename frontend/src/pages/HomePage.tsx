@@ -42,14 +42,14 @@ export default function HomePage() {
       ) : stories.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl text-zinc-800 mb-4">◈</div>
-          <p className="text-zinc-500">No stories yet</p>
-          <p className="text-zinc-600 text-sm mt-1">
+          <p className="text-zinc-400">No stories yet</p>
+          <p className="text-zinc-400 text-sm mt-1">
             Go to Architecture tab to add one
           </p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-zinc-500">No stories matching "{query}"</p>
+          <p className="text-zinc-400">No stories matching "{query}"</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

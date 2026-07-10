@@ -8,7 +8,7 @@ const links = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-lg border-t border-zinc-800 md:hidden">
+    <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-lg border-t border-zinc-800 md:hidden">
       <div className="flex items-center justify-around h-16">
         {links.map((link) => (
           <NavLink
@@ -17,7 +17,7 @@ export default function BottomNav() {
             end={link.to === '/'}
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 px-6 py-2 text-xs transition-colors ${
-                isActive ? 'text-purple-400' : 'text-zinc-500'
+                isActive ? 'text-purple-400' : 'text-zinc-400'
               }`
             }
           >

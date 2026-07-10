@@ -50,7 +50,7 @@ export default function HistoryPage() {
       ) : items.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl text-zinc-800 mb-4">📖</div>
-          <p className="text-zinc-500">Start reading to see your history here</p>
+          <p className="text-zinc-400">Start reading to see your history here</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -69,7 +69,7 @@ export default function HistoryPage() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-sm">
+                  <div className="w-full h-full flex items-center justify-center text-zinc-400 text-sm">
                     ◈
                   </div>
                 )}
@@ -82,7 +82,7 @@ export default function HistoryPage() {
                   Chapter {item.progress.chapterNumber} &middot; Page {item.progress.pageNumber}/{item.progress.totalPages}
                 </p>
               </div>
-              <span className="text-xs text-zinc-500 shrink-0">Continue &rarr;</span>
+              <span className="text-xs text-zinc-400 shrink-0">Continue &rarr;</span>
             </Link>
           ))}
         </div>

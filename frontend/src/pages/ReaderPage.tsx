@@ -87,7 +87,7 @@ export default function ReaderPage() {
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-zinc-500">{error}</p>
+        <p className="text-zinc-400">{error}</p>
         <Link to={`/story/${storyId}`} className="text-purple-400 text-sm mt-2 inline-block">
           Back to story
         </Link>
@@ -98,7 +98,7 @@ export default function ReaderPage() {
   if (pageFileIds.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-zinc-500">No pages in this chapter</p>
+        <p className="text-zinc-400">No pages in this chapter</p>
         <Link to={`/story/${storyId}`} className="text-purple-400 text-sm mt-2 inline-block">
           Back to story
         </Link>

@@ -329,7 +329,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
             return (
               <div key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-500 w-20 truncate shrink-0" title={ch.folderName}>{ch.folderName}</span>
+                  <span className="text-xs text-zinc-400 w-20 truncate shrink-0" title={ch.folderName}>{ch.folderName}</span>
                   <input type="number" min="1" value={ch.chapterNumber}
                     onChange={e => updateChapter(i, { chapterNumber: parseInt(e.target.value) || 1 })}
                     className="input-field w-16 text-sm" disabled={uploading} />
@@ -337,12 +337,12 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
                     onChange={e => updateChapter(i, { title: e.target.value })}
                     className="input-field flex-1 text-sm min-w-0" disabled={uploading}
                     placeholder="Chapter title" />
-                  <span className="text-xs text-zinc-500 whitespace-nowrap shrink-0">
+                  <span className="text-xs text-zinc-400 whitespace-nowrap shrink-0">
                     {ch.entries.length} · {formatSize(chSize)}
                   </span>
                   {!uploading && (
                     <button onClick={() => removeChapter(i)}
-                      className="text-zinc-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                      className="text-zinc-400 hover:text-red-400 text-lg leading-none shrink-0" aria-label={`Remove ${ch.folderName}`}>×</button>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -375,12 +375,12 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
         }`}
       >
         <input ref={folderInputRef} type="file" multiple style={{ display: 'none' }}
-          onChange={handleFolderSelect} />
+          onChange={handleFolderSelect} aria-label="Select folder" />
 
         <div className="text-zinc-400 text-sm mb-2">
           Drop folders here or click to select
         </div>
-        <p className="text-zinc-600 text-xs">
+        <p className="text-zinc-400 text-xs">
           Each subfolder becomes a chapter · JPG, PNG, WebP · {PER_CHAPTER_MAX_FILES} files max per chapter · 15MB each
         </p>
         <div className="flex items-center justify-center gap-4 mt-3">
@@ -419,7 +419,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
           <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
             <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
-          <div className="flex justify-between text-xs text-zinc-500">
+          <div className="flex justify-between text-xs text-zinc-400">
             <span>{currentChapterLabel || 'Uploading...'} {progress}%</span>
             {eta && <span>{eta}</span>}
           </div>

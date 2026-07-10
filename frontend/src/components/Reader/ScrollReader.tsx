@@ -65,7 +65,7 @@ export default function ScrollReader({ fileIds, thumbFileIds, storyId, chapterId
         <Link to={`/story/${storyId}`} className="text-sm text-zinc-400 hover:text-white transition-colors">
           ← Back
         </Link>
-        <button onClick={onToggleMode} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300">
+        <button onClick={onToggleMode} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors text-zinc-300" aria-label="Switch to page mode">
           Page Mode
         </button>
       </div>
@@ -79,7 +79,7 @@ export default function ScrollReader({ fileIds, thumbFileIds, storyId, chapterId
               alt={`Page ${i + 1}`}
               className="w-full min-h-[50vh]"
             />
-            <div className="text-center text-xs text-zinc-600 py-1">
+            <div className="text-center text-xs text-zinc-400 py-1">
               {i + 1} / {fileIds.length}
             </div>
           </div>

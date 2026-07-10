@@ -18,7 +18,7 @@ export default function StoryCard({ story }: { story: Story }) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-zinc-600 text-4xl">
+          <div className="w-full h-full flex items-center justify-center text-zinc-400 text-4xl">
             ◈
           </div>
         )}
@@ -35,7 +35,7 @@ export default function StoryCard({ story }: { story: Story }) {
           }`}>
             {story.status}
           </span>
-          <span className="text-xs text-zinc-500">{formatDate(story.updatedAt)}</span>
+          <span className="text-xs text-zinc-400">{formatDate(story.updatedAt)}</span>
         </div>
       </div>
     </Link>
