@@ -46,7 +46,7 @@ async function getWebpEncoder(): Promise<WebPModule> {
   return webpEncoder
 }
 
-const MAX_COMPRESS_SIZE = 10 * 1024 * 1024
+const MAX_COMPRESS_SIZE = 15 * 1024 * 1024
 
 const WEBP_BASE_OPTIONS: EncodeOptions = {
   quality: 80,

@@ -6,7 +6,7 @@ import type { Story } from '../../types'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_FILES = 35
 const MAX_FILE_SIZE = 15 * 1024 * 1024
-const MAX_BATCH_BYTES = 1024 * 1024
+const MAX_BATCH_BYTES = 1
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
