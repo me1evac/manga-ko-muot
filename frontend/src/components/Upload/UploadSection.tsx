@@ -3,7 +3,7 @@ import { api } from '../../services/api'
 import Toast from '../Common/Toast'
 import type { Story } from '../../types'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 const PER_CHAPTER_MAX_FILES = 35
 const MAX_FILE_SIZE = 15 * 1024 * 1024
 

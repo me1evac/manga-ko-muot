@@ -25,7 +25,7 @@ export interface PageRecord {
   fileId: string
   thumbnailId?: string
   pageNumber: number
-  format: 'jpg' | 'png' | 'webp'
+  format: 'jpg' | 'png' | 'webp' | 'avif'
   fileSize: number
 }
 

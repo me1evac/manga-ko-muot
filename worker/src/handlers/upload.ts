@@ -6,18 +6,19 @@ import { decodeToImageData, encodeImageDataToWebp } from '../utils/imageCompress
 
 const MAX_FILES = 35
 const FILE_SIZE_LIMIT = 15 * 1024 * 1024
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 
-const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp'> = {
+const EXT_MAP: Record<string, 'jpg' | 'png' | 'webp' | 'avif'> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'image/avif': 'avif',
 }
 
 async function processFile(file: File): Promise<{
   buffer: ArrayBuffer
   type: string
-  ext: 'jpg' | 'png' | 'webp'
+  ext: 'jpg' | 'png' | 'webp' | 'avif'
 }> {
   const buf = await file.arrayBuffer()
 
