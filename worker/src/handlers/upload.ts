@@ -97,33 +97,43 @@ app.post('/', async (c) => {
   let nextPageNum = existingPages.length + 1
 
   const newPages: PageRecord[] = []
+  const uploadedKeys: string[] = []
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    const { buffer, type, ext } = await processFile(file)
-    const pageNum = nextPageNum++
-    const key = `pages/${storyId}/${chapterId}/${pageNum}.${ext}`
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const { buffer, type, ext } = await processFile(file)
+      const pageNum = nextPageNum++
+      const key = `pages/${storyId}/${chapterId}/${pageNum}.${ext}`
 
-    await bucket.put(key, buffer, {
-      httpMetadata: { contentType: type },
-    })
+      await bucket.put(key, buffer, {
+        httpMetadata: { contentType: type },
+      })
+      uploadedKeys.push(key)
 
-    newPages.push({
-      id: `p${chapterId}_${pageNum}`,
-      chapterId,
-      storyId,
-      fileId: key,
-      pageNumber: pageNum,
-      format: ext,
-      fileSize: file.size,
-    })
+      newPages.push({
+        id: `p${chapterId}_${pageNum}`,
+        chapterId,
+        storyId,
+        fileId: key,
+        pageNumber: pageNum,
+        format: ext,
+        fileSize: file.size,
+      })
+    }
+
+    const allPages = [...existingPages, ...newPages]
+    await putJson(kv, KEYS.pages(storyId, chapterId), allPages)
+
+    chapters[chapterIdx].pageCount = allPages.length
+    await putJson(kv, KEYS.chapters(storyId), chapters)
+  } catch (e) {
+    // R2 objects were created but KV update failed — clean up orphans
+    if (uploadedKeys.length > 0) {
+      await Promise.all(uploadedKeys.map(k => bucket.delete(k).catch(() => {})))
+    }
+    throw e
   }
-
-  const allPages = [...existingPages, ...newPages]
-  await putJson(kv, KEYS.pages(storyId, chapterId), allPages)
-
-  chapters[chapterIdx].pageCount = allPages.length
-  await putJson(kv, KEYS.chapters(storyId), chapters)
 
   return c.json({ pages: newPages, totalPages: chapters[chapterIdx].pageCount }, 201)
 })
