@@ -15,7 +15,7 @@ export default function Toast({ message, type = 'info', onClose, duration }: Toa
     const timer = setTimeout(() => {
       setVisible(false)
       setTimeout(onClose, 300)
-    }, duration)
+    }, effectiveDuration)
     return () => clearTimeout(timer)
   }, [duration, onClose])
 
