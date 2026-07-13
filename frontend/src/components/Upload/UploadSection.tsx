@@ -98,6 +98,29 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     return () => window.removeEventListener('beforeunload', handler)
   }, [uploading])
 
+  async function convertAvifToWebp(file: File): Promise<File> {
+    const img = await createImageBitmap(file)
+    const canvas = new OffscreenCanvas(img.width, img.height)
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+    const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 })
+    img.close()
+    const name = file.name.replace(/\.(avif|avif-sequence)$/i, '.webp')
+    return new File([blob], name, { type: 'image/webp' })
+  }
+
+  async function convertAvifFiles(files: File[]): Promise<File[]> {
+    const results: File[] = []
+    for (const f of files) {
+      if (f.type === 'image/avif') {
+        try { results.push(await convertAvifToWebp(f)) } catch { results.push(f) }
+      } else {
+        results.push(f)
+      }
+    }
+    return results
+  }
+
   function validateFile(file: File): string | undefined {
     if (!ALLOWED_TYPES.includes(file.type)) return 'Unsupported format'
     if (file.size > MAX_FILE_SIZE) return `Exceeds 15MB (${formatSize(file.size)})`
@@ -158,12 +181,13 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     }
   }
 
-  function handleFolderSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFolderSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const fileList = e.target.files
     if (!fileList || fileList.length === 0) return
-    const allFiles = Array.from(fileList).filter(f => ALLOWED_TYPES.includes(f.type))
+    let allFiles = Array.from(fileList).filter(f => ALLOWED_TYPES.includes(f.type))
     if (allFiles.length === 0) { setToast('No supported images found'); return }
     allFiles.sort((a, b) => collator.compare(a.name, b.name))
+    allFiles = await convertAvifFiles(allFiles)
     const groups = groupFilesByFolder(allFiles)
     for (const [folder, files] of groups) {
       addChapterGroup(files, folder === '_root' ? null : folder)
@@ -171,13 +195,17 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     e.target.value = ''
   }
 
-  function handleDrop(e: React.DragEvent) {
+  async function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     const items = Array.from(e.dataTransfer.items)
     if (items.length === 0) {
-      const files = Array.from(e.dataTransfer.files).filter(f => ALLOWED_TYPES.includes(f.type))
-      if (files.length > 0) { files.sort((a, b) => collator.compare(a.name, b.name)); addChapterGroup(files, null) }
+      let files = Array.from(e.dataTransfer.files).filter(f => ALLOWED_TYPES.includes(f.type))
+      if (files.length > 0) {
+        files.sort((a, b) => collator.compare(a.name, b.name))
+        files = await convertAvifFiles(files)
+        addChapterGroup(files, null)
+      }
       return
     }
     const groups = new Map<string, File[]>()
@@ -206,12 +234,13 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
         })
       }
     }
-    function done() {
+    async function done() {
       if (groups.size === 0) { setToast('No supported images found'); return }
       for (const [folder, files] of groups) {
         if (files.length === 0) continue
         files.sort((a, b) => collator.compare(a.name, b.name))
-        addChapterGroup(files, folder === '_root' ? null : folder)
+        const converted = await convertAvifFiles(files)
+        addChapterGroup(converted, folder === '_root' ? null : folder)
       }
     }
     items.forEach(item => { const entry = item.webkitGetAsEntry(); if (entry) processEntry(entry) })
