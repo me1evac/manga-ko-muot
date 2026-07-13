@@ -7,7 +7,8 @@ interface ToastProps {
   duration?: number
 }
 
-export default function Toast({ message, type = 'info', onClose, duration = 3000 }: ToastProps) {
+export default function Toast({ message, type = 'info', onClose, duration }: ToastProps) {
+  const effectiveDuration = duration ?? (type === 'error' ? 8000 : 3000)
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
 
   return (
     <div
-      className={`fixed bottom-24 md:bottom-6 right-4 z-50 px-4 py-2.5 rounded-lg border text-sm backdrop-blur-lg transition-all duration-300 max-w-xs ${
+      className={`fixed bottom-24 md:bottom-6 right-4 z-50 px-4 py-2.5 rounded-lg border text-sm backdrop-blur-lg transition-all duration-300 max-w-md break-words ${
         colors[type]
       } ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
     >

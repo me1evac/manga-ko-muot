@@ -266,9 +266,12 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
     setCurrentChapterLabel('Preparing...')
 
     let uploadedBytes = 0
+    let lastChapter: string | undefined
+    let lastFile: string | undefined
 
     try {
       for (const { chapter, validEntries } of toUpload) {
+        lastChapter = `Ch.${chapter.chapterNumber}`
         setCurrentChapterLabel(`Chapter ${chapter.chapterNumber}: ${chapter.title}`)
 
         const apiChapter = await api.chapters.create({
@@ -278,6 +281,7 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
         })
 
         for (const entry of validEntries) {
+          lastFile = entry.file.name
           await api.upload.pages(storyId, apiChapter.id, [entry.file], (done) => {
             const pct = Math.min(((uploadedBytes + done) / totalBytes) * 100, 99)
             setProgress(Math.round(pct))
@@ -294,7 +298,8 @@ export default function UploadSection({ stories, onSuccess }: UploadSectionProps
       setToast(`Uploaded ${totalFiles} pages across ${toUpload.length} chapter(s)`)
       onSuccess()
     } catch (err: any) {
-      setToast(err.message)
+      const ctx = lastFile ? ` at ${lastChapter}/${lastFile}` : lastChapter ? ` at ${lastChapter}` : ''
+      setToast(`${err.message}${ctx}`)
     } finally {
       setUploading(false)
     }

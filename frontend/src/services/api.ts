@@ -195,13 +195,14 @@ export const api = {
           } else {
             try {
               const err = JSON.parse(xhr.responseText)
-              reject(new Error(err.error ?? 'upload failed'))
+              reject(new Error(err.error ?? `upload failed (HTTP ${xhr.status})`))
             } catch {
-              reject(new Error('upload failed'))
+              const snippet = (xhr.responseText ?? '').slice(0, 80).trim()
+              reject(new Error(`upload failed (HTTP ${xhr.status})${snippet ? `: ${snippet}` : ''}`))
             }
           }
         }
-        xhr.onerror = () => reject(new Error('network error'))
+        xhr.onerror = () => reject(new Error('network error — check your connection'))
         xhr.open('POST', `${BASE}/upload`)
         xhr.send(formData)
       })
