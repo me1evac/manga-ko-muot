@@ -1,6 +1,5 @@
 import type { WebPModule, EncodeOptions } from '@jsquash/webp/codec/enc/webp_enc'
 import type { MozJPEGModule } from '@jsquash/jpeg/codec/dec/mozjpeg_dec'
-import type { AVIFModule } from '@jsquash/avif/codec/dec/avif_dec'
 
 interface ImageData {
   data: Uint8ClampedArray
@@ -9,10 +8,8 @@ interface ImageData {
 }
 import webpEncFactory from '@jsquash/webp/codec/enc/webp_enc.js'
 import jpegDecFactory from '@jsquash/jpeg/codec/dec/mozjpeg_dec.js'
-import avifDecFactory from '@jsquash/avif/codec/dec/avif_dec.js'
 import WEBP_ENC_WASM from '@jsquash/webp/codec/enc/webp_enc.wasm'
 import JPEG_DEC_WASM from '@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm'
-import AVIF_DEC_WASM from '@jsquash/avif/codec/dec/avif_dec.wasm'
 
 function initEmscriptenModule<T>(
   moduleFactory: (opts: any) => Promise<T>,
@@ -33,7 +30,6 @@ function initEmscriptenModule<T>(
 }
 
 let jpegDecoder: Promise<MozJPEGModule> | null = null
-let avifDecoder: Promise<AVIFModule> | null = null
 let webpEncoder: Promise<WebPModule> | null = null
 
 async function getJpegDecoder(): Promise<MozJPEGModule> {
@@ -41,13 +37,6 @@ async function getJpegDecoder(): Promise<MozJPEGModule> {
     jpegDecoder = initEmscriptenModule<MozJPEGModule>(jpegDecFactory, JPEG_DEC_WASM)
   }
   return jpegDecoder
-}
-
-async function getAvifDecoder(): Promise<AVIFModule> {
-  if (!avifDecoder) {
-    avifDecoder = initEmscriptenModule<AVIFModule>(avifDecFactory, AVIF_DEC_WASM)
-  }
-  return avifDecoder
 }
 
 async function getWebpEncoder(): Promise<WebPModule> {
@@ -94,7 +83,7 @@ export async function decodeToImageData(
   mimeType: string,
 ): Promise<ImageData | null> {
   if (buffer.byteLength > MAX_COMPRESS_SIZE) return null
-  if (mimeType === 'image/webp') return null
+  if (mimeType === 'image/webp' || mimeType === 'image/avif') return null
 
   if (mimeType === 'image/jpeg') {
     try {
@@ -102,16 +91,6 @@ export async function decodeToImageData(
       return decoder.decode(buffer, false)
     } catch (e) {
       console.error('jpeg decode failed', e)
-      return null
-    }
-  }
-
-  if (mimeType === 'image/avif') {
-    try {
-      const decoder = await getAvifDecoder()
-      return decoder.decode(buffer, 8)
-    } catch (e) {
-      console.error('avif decode failed', e)
       return null
     }
   }
